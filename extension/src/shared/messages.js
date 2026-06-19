@@ -1,0 +1,3 @@
+export const MSG = {
+  DOWNLOAD_TRANSCRIPT: "DOWNLOAD_TRANSCRIPT",
+};

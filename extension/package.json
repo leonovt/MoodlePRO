@@ -1,0 +1,15 @@
+{
+  "name": "moodlepro-extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.js",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "esbuild": "^0.23.0",
+    "jsdom": "^24.0.0",
+    "vitest": "^2.0.0"
+  }
+}

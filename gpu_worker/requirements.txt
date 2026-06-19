@@ -1,0 +1,5 @@
+redis>=5.0
+httpx>=0.27
+pydantic-settings>=2.3
+# Uncomment to run real transcription on a CUDA machine (FAKE_TRANSCRIBE=false):
+# faster-whisper>=1.0
