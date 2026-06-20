@@ -50,6 +50,8 @@ class SummaryRequest(BaseModel):
     text: str
     item_type: str = "other"
     mode: str = "casual"
+    file_base64: Optional[str] = None
+    mime_type: Optional[str] = None
 
 
 class SummaryResponse(BaseModel):
@@ -68,6 +70,8 @@ class QuizRequest(BaseModel):
     text: str
     item_type: str = "other"
     num_questions: int = 3
+    file_base64: Optional[str] = None
+    mime_type: Optional[str] = None
 
 
 class QuizResponse(BaseModel):

@@ -1,5 +1,14 @@
 import { createResultModal } from "./result-modal.js";
+import { arrayBufferToBase64, resolveResourceFile } from "./resource-file.js";
 import { scrapeCourseItems } from "./course-scraper.js";
+
+/** Slides/resource items don't carry real content in their course-page text — fetch the actual file. */
+async function resolveFileFields(item) {
+  if (item.type !== "slides" || !item.href) return {};
+  const file = await resolveResourceFile(item.href);
+  if (!file) return {};
+  return { file_base64: arrayBufferToBase64(file.buffer), mime_type: file.mimeType };
+}
 
 async function postJson(url, body) {
   const res = await fetch(url, {
@@ -42,18 +51,21 @@ export function injectCourseItemButtons(doc, serverBaseUrl) {
       const modal = createResultModal(doc);
       modal.showLoading();
       try {
+        const fileFields = await resolveFileFields(item);
         const [summaryRes, quizRes] = await Promise.all([
           postJson(`${httpBase}/items/summary`, {
             title: item.title,
             text: item.text,
             item_type: item.type,
             mode: "default",
+            ...fileFields,
           }),
           postJson(`${httpBase}/items/quiz`, {
             title: item.title,
             text: item.text,
             item_type: item.type,
             num_questions: 5,
+            ...fileFields,
           }),
         ]);
         modal.showSummaryAndQuiz(summaryRes.summary, quizRes.questions);

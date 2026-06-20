@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     internal_api_token: str = "dev-internal-token-change-me"
     storage_dir: str = "./data"
     public_base_url: str = "http://localhost:8000"
+    gemini_api_key: str = ""
 
 
 settings = Settings()

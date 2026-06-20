@@ -10,6 +10,8 @@ os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{_tmp_dir}/test.db"
 os.environ["STORAGE_DIR"] = str(Path(_tmp_dir) / "storage")
 os.environ["INTERNAL_API_TOKEN"] = "test-internal-token"
 os.environ["REDIS_URL"] = "redis://localhost:6379/0"
+# Force the Fake LLM providers in tests even if a real key is sitting in .env for local dev.
+os.environ["GEMINI_API_KEY"] = ""
 
 import fakeredis.aioredis as fakeredis_aio  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402

@@ -1,7 +1,22 @@
 import { createApiClient } from "../shared/api-client.js";
 import { MSG } from "../shared/messages.js";
 import { findBguVideoPlayer } from "./detect-player.js";
+import { findCourseMediaLink, fetchAllCourseMediaVideos } from "./course-media.js";
 import { scrapeCourseItems } from "./course-scraper.js";
+
+/**
+ * The course page's own activity list often doesn't link directly to recordings — BGU routes
+ * real lecture videos through a separate "Course media" page (blocks/video/videoslist.php).
+ * Prefer that as the source of truth; fall back to scraping lecture activities directly only
+ * when a course has no Course media link.
+ */
+async function getDownloadableLectures(doc) {
+  const courseMediaHref = findCourseMediaLink(doc);
+  if (courseMediaHref) {
+    return fetchAllCourseMediaVideos(courseMediaHref);
+  }
+  return scrapeCourseItems(doc).filter((item) => item.type === "lecture");
+}
 
 export function groupLecturesBySection(items) {
   const groups = new Map();
@@ -99,15 +114,22 @@ function buildDialog(doc) {
   return box;
 }
 
-function openDownloadDialog(doc, api) {
-  const items = scrapeCourseItems(doc);
-  const groups = groupLecturesBySection(items);
+async function openDownloadDialog(doc, api) {
   const box = buildDialog(doc);
 
   const heading = doc.createElement("h3");
   heading.textContent = "Download course transcripts";
   heading.style.cssText = "margin-top:0;";
   box.appendChild(heading);
+
+  const loading = doc.createElement("p");
+  loading.textContent = "Loading course media...";
+  box.appendChild(loading);
+
+  const items = await getDownloadableLectures(doc);
+  loading.remove();
+
+  const groups = groupLecturesBySection(items);
 
   if (groups.size === 0) {
     const empty = doc.createElement("p");

@@ -82,19 +82,6 @@ async def test_fake_chapterer_empty_segments_returns_empty():
     assert chapters == []
 
 
-async def test_fake_chapterer_from_text_splits_into_chunks():
-    text = " ".join(f"word{i}" for i in range(30))
-    chapters = await FakeChapterer().make_chapters_from_text(text, num_chapters=3)
-    assert len(chapters) == 3
-    for i, chapter in enumerate(chapters):
-        assert chapter["id"] == i
-        assert chapter["start"] == 0.0
-        assert chapter["end"] == 0.0
-        assert chapter["text"]
-    rejoined = " ".join(c["text"] for c in chapters)
-    assert rejoined == text
-
-
 async def test_post_items_summary(client):
     response = await client.post(
         "/items/summary",
@@ -224,12 +211,27 @@ async def test_course_quiz_empty_scope_returns_empty_questions(client):
     assert response.json()["questions"] == []
 
 
+def _build_srt_with_three_segments(text: str) -> str:
+    words = text.split()
+    third = max(1, len(words) // 3)
+    groups = [words[:third], words[third : 2 * third], words[2 * third :]]
+    lines = []
+    start = 0
+    for i, group in enumerate(g for g in groups if g):
+        lines.append(str(i + 1))
+        lines.append(f"00:00:{start:02d},000 --> 00:00:{start + 2:02d},000")
+        lines.append(" ".join(group))
+        lines.append("")
+        start += 2
+    return "\n".join(lines)
+
+
 async def _create_completed_job(client, internal_headers, video_url: str, text: str) -> str:
     create_resp = await client.post("/jobs", json={"video_url": video_url})
     job_id = create_resp.json()["id"]
     await client.post(
         f"/internal/jobs/{job_id}/complete",
-        json={"text": text, "srt": "1\n00:00:00,000 --> 00:00:02,000\nHello\n", "language": "he"},
+        json={"text": text, "srt": _build_srt_with_three_segments(text), "language": "he"},
         headers=internal_headers,
     )
     return job_id

@@ -43,6 +43,13 @@ describe("injectCourseItemButtons", () => {
 
   it("calls the summary and quiz endpoints on click", async () => {
     global.fetch.mockImplementation((url) => {
+      if (typeof url === "string" && url.includes("resource/view.php")) {
+        return Promise.resolve({
+          url,
+          headers: { get: () => "text/html" },
+          text: async () => "<html><body>no embedded file here</body></html>",
+        });
+      }
       if (url.endsWith("/items/summary")) {
         return Promise.resolve({ ok: true, json: async () => ({ summary: "a summary" }) });
       }

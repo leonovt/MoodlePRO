@@ -6,6 +6,7 @@ import { injectCourseItemButtons } from "./course-items.js";
 import { injectCourseToolbar } from "./course-toolbar.js";
 import { injectCourseDownloader } from "./course-downloader.js";
 import { findBguVideoPlayer } from "./detect-player.js";
+import { injectFeedbackButton } from "./feedback.js";
 import { backfillCompletedJob, fallbackForMissedSegments } from "./segment-fallback.js";
 import { createSidebar } from "./sidebar.js";
 import { createVideoToolbar } from "./video-toolbar.js";
@@ -29,6 +30,8 @@ function connectJobSocket(api, jobId, onEvent) {
 }
 
 export async function main(doc = document, serverBaseUrl = DEFAULT_SERVER_BASE_URL) {
+  injectFeedbackButton(doc);
+
   const player = findBguVideoPlayer(doc);
 
   if (!player) {
