@@ -58,11 +58,12 @@ curl -X POST "$IVRIT_ENDPOINT_URL" \
 ```
 
 ## Caveats / notes
-- **Untested against a live Modal account from here.** The decorators target a recent
-  Modal version; if `modal deploy` errors, check your installed Modal's docs — older
-  versions used `@modal.web_endpoint` (not `@modal.fastapi_endpoint`) and
-  `container_idle_timeout` (not `scaledown_window`). `modal serve serverless/modal_ivrit.py`
-  gives a live dev URL for quick iteration before `deploy`.
+- **Untested against a live Modal account from here.** Uses `@modal.asgi_app()` with all
+  fastapi imports inside the container (Modal runs this file locally to build the app
+  graph, and fastapi isn't installed there — a top-level `from fastapi import ...` would
+  fail with `ModuleNotFoundError`). If `modal deploy` still errors on a kwarg, your Modal
+  may be older: `scaledown_window` was once `container_idle_timeout`. `modal serve
+  serverless/modal_ivrit.py` gives a live dev URL to iterate before `deploy`.
 - First request after idle pays a **cold start** (model download on the very first run,
   then it's cached in the image layer / volume).
 - The server already **chunks** audio over `IVRIT_MAX_UPLOAD_MB` (default 90) and stitches
