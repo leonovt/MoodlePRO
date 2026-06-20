@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     groq_base_url: str = "https://api.groq.com/openai/v1"
     groq_fallback_grace_seconds: float = 90.0
     groq_fallback_poll_seconds: float = 2.0
+    # Groq rejects uploads over ~25 MB (a 2h lecture as 16kHz WAV is ~230 MB). Files
+    # larger than this are split into <= groq_chunk_seconds pieces, transcribed
+    # separately, and stitched back with offset timestamps.
+    groq_max_upload_mb: float = 24.0
+    groq_chunk_seconds: float = 600.0
 
 
 settings = Settings()

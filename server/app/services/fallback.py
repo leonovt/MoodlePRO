@@ -39,6 +39,12 @@ async def run_groq_fallback(
     if await dedup.find_transcript(session, audio_hash) is not None:
         return False
 
+    # Long lectures take minutes via Groq; reflect that so the job isn't stuck at "queued".
+    job = await session.get(Job, job_id)
+    if job is not None and job.status not in ("completed", "failed"):
+        job.status = "transcribing"
+        await session.commit()
+
     result = await provider.transcribe(audio_path, language)
 
     # Re-check after the (slow) transcription: a worker may have completed meanwhile.
@@ -98,14 +104,28 @@ async def _fallback_task(job_id: str, audio_hash: str, language: str) -> None:
             await run_groq_fallback(
                 session, redis, job_id, audio_hash, audio_path, provider, language
             )
-    except Exception:  # noqa: BLE001 - background task; surface to the client, don't crash
+    except Exception as exc:  # noqa: BLE001 - background task; surface to the client, don't crash
         logger.exception("groq fallback failed for job %s", job_id)
+        await _mark_job_failed(job_id, f"groq fallback failed: {exc}")
         try:
             await publish_failed(redis, job_id, "groq fallback failed")
         except Exception:
             logger.exception("failed to publish groq fallback failure for job %s", job_id)
     finally:
         await redis.aclose()
+
+
+async def _mark_job_failed(job_id: str, error: str) -> None:
+    """Persist a failed status so a job whose fallback errored doesn't hang at 'queued'."""
+    try:
+        async with SessionLocal() as session:
+            job = await session.get(Job, job_id)
+            if job is not None and job.status != "completed":
+                job.status = "failed"
+                job.error = error
+                await session.commit()
+    except Exception:  # noqa: BLE001 - best-effort; the exception is already logged
+        logger.exception("failed to mark job %s as failed", job_id)
 
 
 def schedule_groq_fallback(job_id: str, audio_hash: str, language: str = "he") -> None:

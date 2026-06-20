@@ -154,6 +154,31 @@ async def test_worker_will_handle_returns_true_when_transcript_appears(client, m
     assert await fallback._worker_will_handle(redis, "worker-done-hash") is True
 
 
+async def test_fallback_marks_job_failed_on_error(client, monkeypatch):
+    """A throwing provider must leave the job 'failed', not stuck at 'queued'."""
+    monkeypatch.setattr(audio_extract, "hash_audio", lambda path: "hash-groq-fail")
+    monkeypatch.setattr(settings, "groq_api_key", "test-key")
+    monkeypatch.setattr(settings, "groq_fallback_grace_seconds", 0.0)
+
+    class BoomProvider(TranscriptionProvider):
+        async def transcribe(self, audio_path: Path, language: str) -> TranscriptionResult:
+            raise RuntimeError("groq exploded")
+
+    monkeypatch.setattr(fallback, "GroqTranscriber", lambda: BoomProvider())
+
+    resp = await client.post("/jobs", json={"video_url": "https://example.com/boom.mp4"})
+    job_id = resp.json()["id"]
+
+    for _ in range(50):
+        await asyncio.sleep(0.02)
+        status = await client.get(f"/jobs/{job_id}")
+        if status.json()["status"] == "failed":
+            break
+
+    assert status.json()["status"] == "failed"
+    assert "groq exploded" in status.json()["error"]
+
+
 async def test_schedule_is_noop_without_api_key(client, monkeypatch):
     monkeypatch.setattr(audio_extract, "hash_audio", lambda path: "hash-groq-4")
     monkeypatch.setattr(settings, "groq_api_key", "")
