@@ -88,9 +88,9 @@ sudo firewall-cmd --reload
 ## 5. Deploy
 
 ```bash
-# The deploy stack lives on the `cluster` branch. Repo is private — when prompted for a
-# password, paste a GitHub Personal Access Token (Settings → Developer settings → PAT).
-git clone -b cluster https://github.com/RoiPrives/MoodlePRO.git ~/MoodlePRO && cd ~/MoodlePRO/deploy
+# Everything lives on `main`. Repo is private — when prompted for a password, paste a
+# GitHub Personal Access Token (Settings → Developer settings → PAT).
+git clone https://github.com/RoiPrives/MoodlePRO.git ~/MoodlePRO && cd ~/MoodlePRO/deploy
 cp .env.example .env
 # Generate secrets and edit .env:
 openssl rand -hex 32        # use for POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_TOKEN
