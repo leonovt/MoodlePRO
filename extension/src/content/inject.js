@@ -11,9 +11,10 @@ import { backfillCompletedJob, fallbackForMissedSegments } from "./segment-fallb
 import { createSidebar } from "./sidebar.js";
 import { createVideoToolbar } from "./video-toolbar.js";
 
-// Production MoodlePRO server (Oracle VM, HTTPS via Caddy). For local dev, override by
-// passing a serverBaseUrl to main(), or temporarily point this at http://localhost:8000.
-const DEFAULT_SERVER_BASE_URL = "http://localhost:8000";
+// Injected at build time by build.js (defaults to the production server). Falls back to
+// localhost when not defined — i.e. under vitest/dev, where the define isn't applied.
+const DEFAULT_SERVER_BASE_URL =
+  typeof __SERVER_BASE_URL__ !== "undefined" ? __SERVER_BASE_URL__ : "http://localhost:8000";
 
 function addDownloadButton(doc, toolbar, api, jobId) {
   toolbar.addButton("Download", () => {
