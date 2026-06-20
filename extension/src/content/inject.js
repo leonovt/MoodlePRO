@@ -7,6 +7,7 @@ import { findBguVideoPlayer } from "./detect-player.js";
 import { injectFeedbackButton } from "./feedback.js";
 import { backfillCompletedJob, fallbackForMissedSegments } from "./segment-fallback.js";
 import { createSidebar } from "./sidebar.js";
+import { createStatusBanner } from "./status-banner.js";
 import { createVideoToolbar } from "./video-toolbar.js";
 
 // Injected at build time by build.js (defaults to the production server). Falls back to
@@ -53,29 +54,65 @@ export async function main(doc = document, serverBaseUrl = DEFAULT_SERVER_BASE_U
   }
 
   const api = createApiClient(serverBaseUrl);
-  const sidebar = createSidebar(doc, player.videoEl);
-  const overlay = createCaptionOverlay(doc, player.videoEl);
   const toolbar = createVideoToolbar(doc, player.videoEl);
+  const status = createStatusBanner(doc, player.videoEl);
 
-  const job = await api.createJob({ videoUrl: player.mp4Url, moodleVideoId: player.moodleVideoId });
-  addDownloadButton(doc, toolbar, api, job.id);
-  addSubtitleControls(toolbar, overlay);
-  attachChapters(doc, api, job.id, player.videoEl, toolbar).catch(() => {});
+  let started = false;
+  let context = null;
 
-  if (job.status === "completed" && job.text) {
-    await backfillCompletedJob(api, job.id, job.text, sidebar, overlay);
-    return { player, api, job, socket: null };
+  // #3: subtitles/transcript are NOT generated automatically — the user starts them.
+  async function start() {
+    if (started) return context;
+    started = true;
+    startButton.disabled = true;
+    startButton.textContent = "מתמלל…";
+    status.showLoading("מתמלל את ההרצאה… זה עשוי לקחת רגע");
+
+    try {
+      const sidebar = createSidebar(doc, player.videoEl);
+      const overlay = createCaptionOverlay(doc, player.videoEl);
+      const job = await api.createJob({ videoUrl: player.mp4Url, moodleVideoId: player.moodleVideoId });
+
+      addDownloadButton(doc, toolbar, api, job.id);
+      addSubtitleControls(toolbar, overlay);
+      attachChapters(doc, api, job.id, player.videoEl, toolbar).catch(() => {});
+      startButton.remove();
+
+      if (job.status === "completed" && job.text) {
+        await backfillCompletedJob(api, job.id, job.text, sidebar, overlay);
+        status.hide();
+        context = { player, api, job, socket: null, sidebar, overlay, status };
+        return context;
+      }
+
+      const socket = connectJobSocket(api, job.id, (event) => {
+        if (event.type === "segment") {
+          status.hide(); // first words arrived
+          sidebar.addSegment(event);
+          overlay.addSegment(event);
+        } else if (event.type === "failed") {
+          status.showError("התמלול נכשל. נסו שוב מאוחר יותר.");
+        }
+      });
+      fallbackForMissedSegments(api, job.id, sidebar, overlay).catch(() => {});
+
+      context = { player, api, job, socket, sidebar, overlay, status };
+      return context;
+    } catch (err) {
+      // #2: surface failures instead of failing silently, and let the user retry.
+      status.showError("שגיאה בהפעלת התמלול. בדקו את החיבור ונסו שוב.");
+      started = false;
+      startButton.disabled = false;
+      startButton.textContent = "הצג כתוביות";
+      throw err;
+    }
   }
 
-  const socket = connectJobSocket(api, job.id, (event) => {
-    if (event.type === "segment") {
-      sidebar.addSegment(event);
-      overlay.addSegment(event);
-    }
+  const startButton = toolbar.addButton("הצג כתוביות", () => {
+    start().catch(() => {});
   });
-  fallbackForMissedSegments(api, job.id, sidebar, overlay).catch(() => {});
 
-  return { player, api, job, socket, sidebar, overlay };
+  return { player, api, toolbar, status, start };
 }
 
 if (typeof window !== "undefined" && !window.__moodleproTest) {

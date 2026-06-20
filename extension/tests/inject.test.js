@@ -45,21 +45,32 @@ describe("inject main()", () => {
     expect(result).toBeNull();
   });
 
-  it("wires up sidebar + caption overlay and streams segments from the websocket", async () => {
-    const result = await main(document, "http://localhost:8000");
+  it("does NOT transcribe automatically — it shows a start button instead", async () => {
+    await main(document, "http://localhost:8000");
 
-    expect(result.job.id).toBe("job-1");
+    expect(global.fetch).not.toHaveBeenCalled(); // no createJob until clicked
+    expect(FakeWebSocket.instances).toHaveLength(0);
+    const startButton = document.querySelector("#moodlepro-video-toolbar button");
+    expect(startButton.textContent).toBe("הצג כתוביות");
+  });
+
+  it("wires up sidebar + caption overlay and streams segments once started", async () => {
+    const result = await main(document, "http://localhost:8000");
+    const ctx = await result.start();
+
+    expect(ctx.job.id).toBe("job-1");
     expect(document.getElementById("moodlepro-sidebar")).not.toBeNull();
     expect(document.getElementById("moodlepro-caption-overlay")).not.toBeNull();
-    expect(document.getElementById("moodlepro-video-toolbar")).not.toBeNull();
 
     const socket = FakeWebSocket.instances[0];
     expect(socket.url).toBe("ws://localhost:8000/ws/jobs/job-1");
 
     socket.emit({ type: "segment", text: "שלום", start: 0, end: 2 });
 
-    expect(result.sidebar.segments).toEqual([{ type: "segment", text: "שלום", start: 0, end: 2 }]);
-    expect(result.overlay.segments).toEqual([{ type: "segment", text: "שלום", start: 0, end: 2 }]);
+    expect(ctx.sidebar.segments).toEqual([{ type: "segment", text: "שלום", start: 0, end: 2 }]);
+    expect(ctx.overlay.segments).toEqual([{ type: "segment", text: "שלום", start: 0, end: 2 }]);
+    // loading banner hidden once the first segment arrives
+    expect(document.getElementById("moodlepro-status").style.display).toBe("none");
   });
 
   it("renders the cached transcript immediately when the job is already completed", async () => {
@@ -69,17 +80,34 @@ describe("inject main()", () => {
     });
 
     const result = await main(document, "http://localhost:8000");
+    const ctx = await result.start();
 
-    expect(result.socket).toBeNull();
-    expect(result.job.status).toBe("completed");
+    expect(ctx.socket).toBeNull();
+    expect(ctx.job.status).toBe("completed");
     expect(FakeWebSocket.instances).toHaveLength(0);
   });
 
-  it("sends a DOWNLOAD_TRANSCRIPT message to the background worker on button click", async () => {
-    await main(document, "http://localhost:8000");
+  it("shows an error and re-enables the start button when starting fails", async () => {
+    global.fetch = vi.fn().mockRejectedValue(new Error("network down"));
+    const result = await main(document, "http://localhost:8000");
+    const startButton = document.querySelector("#moodlepro-video-toolbar button");
 
-    const button = document.querySelector("#moodlepro-video-toolbar button");
-    button.click();
+    await result.start().catch(() => {});
+
+    const status = document.getElementById("moodlepro-status");
+    expect(status.style.display).not.toBe("none");
+    expect(status.textContent).toContain("שגיאה");
+    expect(startButton.disabled).toBe(false);
+  });
+
+  it("sends a DOWNLOAD_TRANSCRIPT message to the background worker on button click", async () => {
+    const result = await main(document, "http://localhost:8000");
+    await result.start();
+
+    const downloadButton = Array.from(
+      document.querySelectorAll("#moodlepro-video-toolbar button")
+    ).find((b) => b.textContent === "Download");
+    downloadButton.click();
 
     expect(global.chrome.runtime.sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({
