@@ -16,6 +16,16 @@ class Settings(BaseSettings):
     # tested, so a running (test) worker can't silently serve real user jobs.
     cluster_enabled: bool = True
 
+    # Which cloud provider transcribes when the cluster doesn't: "groq" (default, free
+    # tier) or "ivrit" (self-hosted ivrit-ai model on a serverless GPU — Modal/RunPod).
+    # Flip to "ivrit" + set the IVRIT_* vars to switch with no code change.
+    fallback_provider: str = "groq"
+
+    # Self-hosted ivrit.ai serverless endpoint (Hebrew-finetuned Whisper on Modal/RunPod).
+    ivrit_endpoint_url: str = ""          # POST audio here; empty disables the provider
+    ivrit_api_token: str = ""             # sent as "Authorization: Bearer <token>"
+    ivrit_max_upload_mb: float = 90.0     # chunk audio larger than this before upload
+
     # Groq cloud fallback: used when no cluster GPU worker claims a queued job in time.
     groq_api_key: str = ""
     groq_model: str = "whisper-large-v3"

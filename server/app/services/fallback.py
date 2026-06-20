@@ -13,8 +13,26 @@ from app.db.session import SessionLocal
 from app.services import dedup, storage
 from app.services.queue import publish_completed, publish_failed, worker_is_alive
 from app.services.transcribe_groq import GroqTranscriber, TranscriptionProvider
+from app.services.transcribe_ivrit import IvritServerlessTranscriber
 
 logger = logging.getLogger(__name__)
+
+
+def _fallback_configured() -> bool:
+    """True when the selected cloud provider has the credentials it needs."""
+    if settings.fallback_provider == "ivrit":
+        return bool(settings.ivrit_endpoint_url)
+    return bool(settings.groq_api_key)
+
+
+def _make_provider() -> TranscriptionProvider | None:
+    """Build the configured cloud transcriber, or None if it isn't set up."""
+    try:
+        if settings.fallback_provider == "ivrit":
+            return IvritServerlessTranscriber()
+        return GroqTranscriber()
+    except RuntimeError:
+        return None  # missing key/endpoint; nothing to fall back to
 
 # Hold references so fire-and-forget tasks are not garbage-collected mid-flight.
 _background_tasks: set[asyncio.Task] = set()
@@ -97,10 +115,9 @@ async def _fallback_task(job_id: str, audio_hash: str, language: str) -> None:
             logger.warning("groq fallback: audio missing for job %s, skipping", job_id)
             return
 
-        try:
-            provider: TranscriptionProvider = GroqTranscriber()
-        except RuntimeError:
-            return  # no API key configured; nothing to fall back to
+        provider = _make_provider()
+        if provider is None:
+            return  # no provider configured; nothing to fall back to
 
         async with SessionLocal() as session:
             await run_groq_fallback(
@@ -131,12 +148,13 @@ async def _mark_job_failed(job_id: str, error: str) -> None:
 
 
 def schedule_groq_fallback(job_id: str, audio_hash: str, language: str = "he") -> None:
-    """Fire-and-forget: if no worker completes the job within the grace period, use Groq.
+    """Fire-and-forget: if no worker completes the job within the grace period, transcribe
+    via the configured cloud provider (Groq by default, or ivrit serverless).
 
-    No-op when GROQ_API_KEY is unset. If no worker heartbeat is present, the grace wait is
-    skipped and Groq runs immediately (see _worker_will_handle).
+    No-op when the selected provider isn't configured. If no worker heartbeat is present,
+    the grace wait is skipped and the provider runs immediately (see _worker_will_handle).
     """
-    if not settings.groq_api_key:
+    if not _fallback_configured():
         return
     task = asyncio.create_task(_fallback_task(job_id, audio_hash, language))
     _background_tasks.add(task)
