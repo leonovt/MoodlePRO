@@ -3,8 +3,6 @@ import { MSG } from "../shared/messages.js";
 import { attachChapters } from "./chapters.js";
 import { createCaptionOverlay } from "./caption-overlay.js";
 import { injectCourseItemButtons } from "./course-items.js";
-import { injectCoursePageToolbar } from "./course-toolbar.js";
-import { injectCourseDownloader } from "./course-downloader.js";
 import { findBguVideoPlayer } from "./detect-player.js";
 import { injectFeedbackButton } from "./feedback.js";
 import { backfillCompletedJob, fallbackForMissedSegments } from "./segment-fallback.js";
@@ -26,6 +24,15 @@ function addDownloadButton(doc, toolbar, api, jobId) {
   });
 }
 
+function addSubtitleControls(toolbar, overlay) {
+  const toggleBtn = toolbar.addButton("Hide subtitles", () => {
+    const visible = overlay.toggle();
+    toggleBtn.textContent = visible ? "Hide subtitles" : "Show subtitles";
+  });
+  toolbar.addButton("A+", () => overlay.changeFontSize(2));
+  toolbar.addButton("A−", () => overlay.changeFontSize(-2));
+}
+
 function connectJobSocket(api, jobId, onEvent) {
   const socket = new WebSocket(api.wsUrl(jobId));
   socket.addEventListener("message", (event) => onEvent(JSON.parse(event.data)));
@@ -40,8 +47,6 @@ export async function main(doc = document, serverBaseUrl = DEFAULT_SERVER_BASE_U
   if (!player) {
     if (doc.querySelector('li[data-for="cmitem"]')) {
       injectCourseItemButtons(doc, serverBaseUrl);
-      injectCourseDownloader(doc, serverBaseUrl);
-      injectCoursePageToolbar(doc, serverBaseUrl);
       return null;
     }
     return null;
@@ -54,6 +59,7 @@ export async function main(doc = document, serverBaseUrl = DEFAULT_SERVER_BASE_U
 
   const job = await api.createJob({ videoUrl: player.mp4Url, moodleVideoId: player.moodleVideoId });
   addDownloadButton(doc, toolbar, api, job.id);
+  addSubtitleControls(toolbar, overlay);
   attachChapters(doc, api, job.id, player.videoEl, toolbar).catch(() => {});
 
   if (job.status === "completed" && job.text) {

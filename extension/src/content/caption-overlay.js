@@ -19,6 +19,8 @@ export function createCaptionOverlay(doc, videoEl) {
 
   const segments = [];
   let activeIndex = -1;
+  let visible = true;
+  let fontSizePx = 18;
 
   function syncToTime(currentTime) {
     const newIndex = findActiveSegmentIndex(segments, currentTime);
@@ -31,7 +33,25 @@ export function createCaptionOverlay(doc, videoEl) {
     segments.push(segment);
   }
 
+  /** Show or hide the caption layer. Returns the new visible state. */
+  function setVisible(next) {
+    visible = next;
+    overlay.style.display = visible ? "" : "none";
+    return visible;
+  }
+
+  function toggle() {
+    return setVisible(!visible);
+  }
+
+  /** Grow/shrink caption text, clamped to a readable range. Returns the new px size. */
+  function changeFontSize(deltaPx) {
+    fontSizePx = Math.max(10, Math.min(48, fontSizePx + deltaPx));
+    overlay.style.fontSize = `${fontSizePx}px`;
+    return fontSizePx;
+  }
+
   videoEl.addEventListener("timeupdate", () => syncToTime(videoEl.currentTime));
 
-  return { overlay, addSegment, syncToTime, segments };
+  return { overlay, addSegment, syncToTime, segments, setVisible, toggle, changeFontSize };
 }
