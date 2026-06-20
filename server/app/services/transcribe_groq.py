@@ -101,6 +101,7 @@ class GroqTranscriber(TranscriptionProvider):
         base_url: str | None = None,
         max_upload_mb: float | None = None,
         chunk_seconds: float | None = None,
+        max_retries: int | None = None,
     ) -> None:
         self._api_key = api_key or settings.groq_api_key
         self._model = model or settings.groq_model
@@ -112,26 +113,49 @@ class GroqTranscriber(TranscriptionProvider):
         self._chunk_seconds = (
             chunk_seconds if chunk_seconds is not None else settings.groq_chunk_seconds
         )
+        self._max_retries = max_retries if max_retries is not None else settings.groq_max_retries
         if not self._api_key:
             raise RuntimeError("GROQ_API_KEY is not configured")
 
+    def _retry_delay(self, response: httpx.Response, attempt: int) -> float:
+        """Seconds to wait before retrying a 429: the Retry-After header if Groq sent one,
+        otherwise exponential backoff. Capped at groq_retry_max_seconds."""
+        retry_after = response.headers.get("retry-after")
+        if retry_after:
+            try:
+                return min(float(retry_after), settings.groq_retry_max_seconds)
+            except ValueError:
+                pass
+        return min(settings.groq_retry_base_seconds * (2 ** attempt), settings.groq_retry_max_seconds)
+
     async def _transcribe_file(self, audio_path: Path, language: str) -> tuple[list[Segment], str]:
         """POST a single (already small enough) audio file. Returns its segments and the
-        provider's full-text field."""
+        provider's full-text field. Retries on HTTP 429 with backoff."""
+        data = {
+            "model": self._model,
+            "language": language,
+            "response_format": "verbose_json",
+        }
         with audio_path.open("rb") as audio_file:
-            files = {"file": (audio_path.name, audio_file, "application/octet-stream")}
-            data = {
-                "model": self._model,
-                "language": language,
-                "response_format": "verbose_json",
-            }
             async with httpx.AsyncClient(timeout=httpx.Timeout(600.0)) as http_client:
-                response = await http_client.post(
-                    f"{self._base_url}/audio/transcriptions",
-                    headers={"Authorization": f"Bearer {self._api_key}"},
-                    data=data,
-                    files=files,
-                )
+                for attempt in range(self._max_retries + 1):
+                    audio_file.seek(0)  # rewind so each retry re-uploads the whole file
+                    files = {"file": (audio_path.name, audio_file, "application/octet-stream")}
+                    response = await http_client.post(
+                        f"{self._base_url}/audio/transcriptions",
+                        headers={"Authorization": f"Bearer {self._api_key}"},
+                        data=data,
+                        files=files,
+                    )
+                    if response.status_code == 429 and attempt < self._max_retries:
+                        delay = self._retry_delay(response, attempt)
+                        logger.warning(
+                            "groq rate-limited (429); retrying in %.1fs (attempt %d/%d)",
+                            delay, attempt + 1, self._max_retries,
+                        )
+                        await asyncio.sleep(delay)
+                        continue
+                    break
         response.raise_for_status()
         body = response.json()
 

@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     # separately, and stitched back with offset timestamps.
     groq_max_upload_mb: float = 24.0
     groq_chunk_seconds: float = 600.0
+    # On HTTP 429 (rate limit) Groq is retried with exponential backoff, honoring a
+    # Retry-After header when present, so a busy hour degrades gracefully instead of failing.
+    groq_max_retries: int = 4
+    groq_retry_base_seconds: float = 2.0
+    groq_retry_max_seconds: float = 60.0
 
 
 settings = Settings()
