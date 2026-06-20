@@ -267,7 +267,15 @@ async def test_chapter_summary_and_quiz_happy_path(client, internal_headers):
 
     quiz_resp = await client.post(f"/jobs/{job_id}/chapters/{chapter_id}/quiz")
     assert quiz_resp.status_code == 200
-    assert len(quiz_resp.json()["questions"]) == 3
+    assert len(quiz_resp.json()["questions"]) == 5  # default
+
+    # num_questions / difficulty are honored as query params
+    custom = await client.post(
+        f"/jobs/{job_id}/chapters/{chapter_id}/quiz?num_questions=3&difficulty=hard"
+    )
+    assert custom.status_code == 200
+    assert len(custom.json()["questions"]) == 3
+    assert "(hard)" in custom.json()["questions"][0]["question"]
 
 
 async def test_chapter_summary_404_for_bad_chapter_id(client, internal_headers):

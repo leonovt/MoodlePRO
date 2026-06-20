@@ -27,18 +27,20 @@ beforeEach(() => {
 });
 
 describe("injectCourseItemButtons", () => {
-  it("injects a button into the activity-name-area", () => {
+  it("injects separate Summary and Quiz buttons into the activity-name-area", () => {
     injectCourseItemButtons(document, "http://localhost:8000");
-    const buttons = document.querySelectorAll('[data-moodlepro-ui]');
-    expect(buttons).toHaveLength(1);
-    expect(buttons[0].textContent).toContain("Summary + Quiz");
+    const buttons = Array.from(document.querySelectorAll('[data-moodlepro-ui]'));
+    expect(buttons).toHaveLength(2);
+    const texts = buttons.map((b) => b.textContent);
+    expect(texts.some((t) => t.includes("Summary"))).toBe(true);
+    expect(texts.some((t) => t.includes("Quiz"))).toBe(true);
   });
 
   it("does not duplicate buttons when called twice", () => {
     injectCourseItemButtons(document, "http://localhost:8000");
     injectCourseItemButtons(document, "http://localhost:8000");
     const buttons = document.querySelectorAll('[data-moodlepro-ui]');
-    expect(buttons).toHaveLength(1);
+    expect(buttons).toHaveLength(2);
   });
 
   it("calls the summary and quiz endpoints on click", async () => {
@@ -67,29 +69,32 @@ describe("injectCourseItemButtons", () => {
     });
 
     injectCourseItemButtons(document, "http://localhost:8000");
-    const button = document.querySelector('[data-moodlepro-ui]');
-    button.click();
+    const buttons = Array.from(document.querySelectorAll('[data-moodlepro-ui]'));
+    const summaryButton = buttons.find((b) => b.textContent.includes("Summary"));
+    const quizButton = buttons.find((b) => b.textContent.includes("Quiz"));
 
+    summaryButton.click();
     await vi.waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
         "http://localhost:8000/items/summary",
         expect.objectContaining({ method: "POST" })
       );
     });
-
     const summaryCall = global.fetch.mock.calls.find(([url]) => url.endsWith("/items/summary"));
     const summaryBody = JSON.parse(summaryCall[1].body);
     expect(summaryBody).toEqual(
       expect.objectContaining({ title: "Syllabus", item_type: "slides", mode: "default" })
     );
-
-    expect(global.fetch).toHaveBeenCalledWith(
-      "http://localhost:8000/items/quiz",
-      expect.objectContaining({ method: "POST" })
-    );
-
     await vi.waitFor(() => {
       expect(document.querySelector("#moodlepro-modal").textContent).toContain("a summary");
+    });
+
+    quizButton.click();
+    await vi.waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:8000/items/quiz",
+        expect.objectContaining({ method: "POST" })
+      );
     });
   });
 });

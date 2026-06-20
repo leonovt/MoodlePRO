@@ -68,7 +68,7 @@ describe("attachChapters", () => {
       if (typeof url === "string" && url.endsWith("/chapters/c1/summary")) {
         return Promise.resolve({ ok: true, json: async () => ({ summary: "chapter summary" }) });
       }
-      if (typeof url === "string" && url.endsWith("/chapters/c1/quiz")) {
+      if (typeof url === "string" && url.includes("/chapters/c1/quiz")) {
         return Promise.resolve({
           ok: true,
           json: async () => ({
@@ -96,10 +96,17 @@ describe("attachChapters", () => {
       expect(document.querySelector("#moodlepro-modal").textContent).toContain("chapter summary");
     });
 
+    // Quiz now opens a config dialog first; pick defaults and Generate.
     quizButton.click();
+    const generateButton = Array.from(
+      document.querySelectorAll("#moodlepro-quiz-config button")
+    ).find((b) => b.textContent === "Generate");
+    expect(generateButton).toBeTruthy();
+    generateButton.click();
+
     await vi.waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:8000/jobs/job-1/chapters/c1/quiz",
+        "http://localhost:8000/jobs/job-1/chapters/c1/quiz?num_questions=5&difficulty=medium",
         expect.objectContaining({ method: "POST" })
       );
     });

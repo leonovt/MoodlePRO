@@ -1,4 +1,5 @@
 import { createResultModal } from "./result-modal.js";
+import { showQuizConfig } from "./quiz-config.js";
 
 function formatTime(seconds) {
   const total = Math.max(0, Math.floor(seconds));
@@ -86,19 +87,22 @@ export async function attachChapters(doc, api, jobId, videoEl, toolbar) {
     quizButton.textContent = "Quiz";
     quizButton.style.cssText =
       "padding:2px 6px;font-size:11px;cursor:pointer;border:1px solid #e07a00;border-radius:3px;background:#ff9800;color:#fff;font-weight:600;";
-    quizButton.addEventListener("click", async () => {
-      const modal = createResultModal(doc);
-      modal.showLoading();
-      try {
-        const quizRes = await fetch(`${httpBase}/jobs/${jobId}/chapters/${chapter.id}/quiz`, {
-          method: "POST",
-        });
-        if (!quizRes.ok) throw new Error(`request failed: ${quizRes.status}`);
-        const data = await quizRes.json();
-        modal.showQuiz(data.questions);
-      } catch (err) {
-        modal.showSummary(`Failed to load: ${err.message}`);
-      }
+    quizButton.addEventListener("click", () => {
+      showQuizConfig(doc, quizButton, async (numQuestions, difficulty) => {
+        const modal = createResultModal(doc);
+        modal.showLoading();
+        try {
+          const quizRes = await fetch(
+            `${httpBase}/jobs/${jobId}/chapters/${chapter.id}/quiz?num_questions=${numQuestions}&difficulty=${difficulty}`,
+            { method: "POST" }
+          );
+          if (!quizRes.ok) throw new Error(`request failed: ${quizRes.status}`);
+          const data = await quizRes.json();
+          modal.showQuiz(data.questions);
+        } catch (err) {
+          modal.showSummary(`Failed to load: ${err.message}`);
+        }
+      });
     });
     row.appendChild(quizButton);
 

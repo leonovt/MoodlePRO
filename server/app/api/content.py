@@ -120,9 +120,15 @@ async def summarize_chapter(
 
 @router.post("/jobs/{job_id}/chapters/{chapter_id}/quiz", response_model=QuizResponse)
 async def quiz_chapter(
-    job_id: str, chapter_id: int, session: AsyncSession = Depends(get_session)
+    job_id: str,
+    chapter_id: int,
+    num_questions: int = 5,
+    difficulty: str = "medium",
+    session: AsyncSession = Depends(get_session),
 ) -> QuizResponse:
     chapters = await _get_chapters(session, job_id)
     chapter = _find_chapter(chapters, chapter_id)
-    questions = await get_quiz_generator().generate_quiz(chapter["text"])
+    questions = await get_quiz_generator().generate_quiz(
+        chapter["text"], num_questions=num_questions, difficulty=difficulty
+    )
     return QuizResponse(questions=[QuizQuestion(**q) for q in questions])

@@ -1,3 +1,22 @@
+/** Computes a grade line + short Hebrew advice from quiz results. Pure, so it's unit-tested. */
+export function gradeAdvice(correct, total, missedTitles = []) {
+  const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+  const grade = `ציון: ${correct}/${total} (${pct}%)`;
+  let advice;
+  if (pct === 100) advice = "כל הכבוד! שלטת בחומר של הפרק.";
+  else if (pct >= 80) advice = "עבודה טובה! כדאי לעבור שוב על השאלות שטעית בהן.";
+  else if (pct >= 50) advice = "לא רע. מומלץ לחזור על הפרק ולהתמקד בנושאים שפספסת.";
+  else advice = "כדאי לצפות שוב בפרק ולחזור על החומר מההתחלה.";
+  if (missedTitles.length > 0) {
+    const topics = missedTitles
+      .slice(0, 3)
+      .map((t) => "• " + (t.length > 70 ? t.slice(0, 70) + "…" : t))
+      .join("\n");
+    advice += "\nנושאים לחזרה:\n" + topics;
+  }
+  return { grade, advice };
+}
+
 /** Renders a dismissible fixed-position overlay for summaries and quizzes. */
 export function createResultModal(doc) {
   let backdrop = null;
@@ -66,6 +85,19 @@ export function createResultModal(doc) {
   }
 
   function renderQuizInto(content, questions) {
+    const total = questions.length;
+    let answeredCount = 0;
+    let correctCount = 0;
+    const missed = [];
+
+    const resultBlock = doc.createElement("div");
+    resultBlock.id = "moodlepro-quiz-result";
+    resultBlock.style.cssText = [
+      "display:none", "margin-top:8px", "padding:12px", "border-radius:6px",
+      "background:#eef4ff", "border:1px solid #c5d3f7", "direction:rtl",
+      "text-align:right", "color:#111 !important",
+    ].join(";");
+
     questions.forEach((q, qIndex) => {
       const qBlock = doc.createElement("div");
       qBlock.style.cssText = "margin:16px 0;padding-bottom:12px;border-bottom:1px solid #ddd;";
@@ -92,6 +124,9 @@ export function createResultModal(doc) {
           if (answered) return;
           answered = true;
           const correct = optIndex === q.correct_index;
+          answeredCount += 1;
+          if (correct) correctCount += 1;
+          else missed.push(q.question);
           optionButton.style.background = correct ? "#c8f7c5" : "#f7c5c5";
           optionButton.style.borderColor = correct ? "#2e7d32" : "#c62828";
           if (!correct) {
@@ -102,6 +137,20 @@ export function createResultModal(doc) {
             }
           }
           explanation.style.display = "block";
+
+          if (answeredCount === total) {
+            const { grade, advice } = gradeAdvice(correctCount, total, missed);
+            const gradeEl = doc.createElement("div");
+            gradeEl.textContent = grade;
+            gradeEl.style.cssText = "font-weight:bold;font-size:15px;margin-bottom:6px;";
+            const adviceEl = doc.createElement("div");
+            adviceEl.textContent = advice;
+            adviceEl.style.cssText = "font-size:13px;white-space:pre-wrap;";
+            resultBlock.appendChild(gradeEl);
+            resultBlock.appendChild(adviceEl);
+            resultBlock.style.display = "block";
+            if (resultBlock.scrollIntoView) resultBlock.scrollIntoView({ block: "nearest" });
+          }
         });
         qBlock.appendChild(optionButton);
       });
@@ -109,6 +158,8 @@ export function createResultModal(doc) {
       qBlock.appendChild(explanation);
       content.appendChild(qBlock);
     });
+
+    content.appendChild(resultBlock);
   }
 
   function showQuiz(questions) {
