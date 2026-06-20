@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MoodlePRO — Plan &amp; Status</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --border:#2a2e38; --text:#e6e8ec; --muted:#9aa3b2;
+    --accent:#5b8cff; --green:#3ecf8e; --yellow:#e0b341; --red:#e0615a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--text); line-height:1.55;
+  }
+  header{
+    padding:32px 6vw 20px; border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg,#161922,#0f1115);
+  }
+  header h1{margin:0 0 6px; font-size:28px;}
+  header p{margin:0; color:var(--muted); font-size:14px;}
+  main{padding:28px 6vw 60px; max-width:1100px; margin:0 auto;}
+  section{margin-bottom:36px;}
+  h2{font-size:19px; border-left:3px solid var(--accent); padding-left:10px; margin-bottom:14px;}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px;}
+  .card{
+    background:var(--panel); border:1px solid var(--border); border-radius:10px;
+    padding:16px 18px;
+  }
+  .card h3{margin:0 0 8px; font-size:15px; display:flex; align-items:center; gap:8px;}
+  .card p{margin:0 0 8px; color:var(--muted); font-size:13.5px;}
+  .pill{
+    display:inline-block; font-size:11px; font-weight:600; padding:2px 9px;
+    border-radius:999px; letter-spacing:.3px; text-transform:uppercase;
+  }
+  .pill.done{background:rgba(62,207,142,.15); color:var(--green); border:1px solid rgba(62,207,142,.4);}
+  .pill.partial{background:rgba(224,179,65,.15); color:var(--yellow); border:1px solid rgba(224,179,65,.4);}
+  .pill.todo{background:rgba(224,97,90,.15); color:var(--red); border:1px solid rgba(224,97,90,.4);}
+  table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  th,td{padding:9px 10px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top;}
+  th{color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.4px;}
+  tr:last-child td{border-bottom:none;}
+  code{
+    background:#1d212b; padding:2px 6px; border-radius:5px; font-size:12.5px;
+    color:#cdd6e6; border:1px solid var(--border);
+  }
+  .flow{
+    display:flex; flex-wrap:wrap; gap:10px; align-items:center; font-size:13.5px;
+  }
+  .flow .step{
+    background:var(--panel); border:1px solid var(--border); border-radius:8px;
+    padding:8px 12px;
+  }
+  .flow .arrow{color:var(--muted);}
+  .legend{display:flex; gap:18px; font-size:12.5px; color:var(--muted); margin-top:4px;}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .dot{width:9px; height:9px; border-radius:50%; display:inline-block;}
+  .dot.done{background:var(--green);} .dot.partial{background:var(--yellow);} .dot.todo{background:var(--red);}
+  footer{padding:20px 6vw 40px; color:var(--muted); font-size:12.5px; border-top:1px solid var(--border);}
+  .why{font-size:13px; color:var(--muted); margin-top:10px; border-left:2px solid var(--border); padding-left:10px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>MoodlePRO — Plan &amp; Build Status</h1>
+  <p>Live Hebrew/English transcription, captions, and downloads for BGU Moodle lecture videos. Self-hosted, three-tier architecture. Snapshot as of 2026-06-19.</p>
+</header>
+
+<main>
+
+<section>
+  <h2>Why this architecture</h2>
+  <p>Originally scoped as a BYOK/Base44 hackathon project (Groq Whisper API, no GPU, Chrome Web Store BYOK distribution). Pivoted to a fully <strong>self-hosted</strong> pipeline because the user owns an RTX&nbsp;4090 and wants to own the whole stack end-to-end instead of paying per-call cloud ASR or depending on Base44. The BGU-specific DOM detection facts from the earlier plan (video.js player, direct CloudFront MP4, numeric <code>local/video_directory</code> video IDs, no native captions) carried over unchanged.</p>
+</section>
+
+<section>
+  <h2>Architecture overview</h2>
+  <div class="flow">
+    <div class="step">🧩 extension/<br><small>Manifest V3 client</small></div>
+    <span class="arrow">→</span>
+    <div class="step">⚙️ server/<br><small>FastAPI orchestration</small></div>
+    <span class="arrow">→</span>
+    <div class="step">🗄️ Postgres + Redis<br><small>cache + job queue</small></div>
+    <span class="arrow">→</span>
+    <div class="step">🖥️ gpu_worker/<br><small>faster-whisper (stubbed)</small></div>
+  </div>
+  <table style="margin-top:18px">
+    <tr><th>Step</th><th>What happens</th></tr>
+    <tr><td>1</td><td>Content script detects the BGU video.js MP4 player, grabs the direct video URL + numeric Moodle video id.</td></tr>
+    <tr><td>2</td><td><code>POST /jobs</code> → server downloads the video, extracts 16kHz mono audio with ffmpeg, hashes it (SHA-256).</td></tr>
+    <tr><td>3</td><td>Hash hit in Postgres → cached transcript returned immediately. Miss → job queued in Redis, <code>job_id</code> returned.</td></tr>
+    <tr><td>4</td><td>Client opens <code>WS /ws/jobs/{job_id}</code>.</td></tr>
+    <tr><td>5</td><td>GPU worker pops the job, pulls audio over HTTP (<code>GET /internal/audio/{id}</code>, bearer token), transcribes, publishes segments to Redis pub/sub as produced — server relays them to the websocket live.</td></tr>
+    <tr><td>6</td><td>Worker posts the finished transcript (<code>POST /internal/jobs/{id}/complete</code>) — server persists it keyed by audio hash (reused forever), pushes a final <code>completed</code> event.</td></tr>
+    <tr><td>7</td><td>"Download Transcript" hits <code>GET /jobs/{id}/txt</code> and <code>/srt</code>.</td></tr>
+  </table>
+  <p class="why">The worker only makes <em>outbound</em> connections (to Redis and the server's HTTP API) — it can run on a home GPU machine behind NAT with no port-forwarding.</p>
+</section>
+
+<section>
+  <h2>Component status</h2>
+  <div class="grid">
+
+    <div class="card">
+      <h3>🧩 extension/ <span class="pill done">Built</span></h3>
+      <p>Manifest V3 Chrome extension. BGU-specific video.js/MP4 detection, sidebar transcript panel, caption overlay, REST + WebSocket client, download button. Bundled with esbuild (content scripts can't use ES <code>import</code> directly).</p>
+      <p><strong>Tested:</strong> Vitest + jsdom — 4 test files (<code>api-client</code>, <code>detect-player</code>, <code>inject</code>, <code>segment-sync</code>), 15 tests.</p>
+    </div>
+
+    <div class="card">
+      <h3>⚙️ server/ <span class="pill done">Built</span></h3>
+      <p>FastAPI orchestration: yt-dlp/HTTP download → ffmpeg extraction → SHA-256 dedup → Postgres transcript cache → Redis job queue + pub/sub → WebSocket relay.</p>
+      <p><strong>Tested:</strong> pytest against SQLite + fakeredis (no real Postgres/Redis needed) — <code>test_jobs.py</code>, <code>test_ws.py</code>, 6 tests.</p>
+    </div>
+
+    <div class="card">
+      <h3>🖥️ gpu_worker/ <span class="pill partial">Stubbed</span></h3>
+      <p>Pops jobs from Redis, fetches audio via authenticated HTTP GET, transcribes, posts completion back. Ships with <code>FAKE_TRANSCRIBE=true</code> (canned Hebrew segments).</p>
+      <p><strong>Tested:</strong> <code>test_transcriber.py</code> (stub logic) + <code>test_integration.py</code>, which runs the real FastAPI server in-process to verify the full queue/HTTP contract.</p>
+      <p><strong>Not tested:</strong> real transcription — no GPU/model wired up yet.</p>
+    </div>
+
+    <div class="card">
+      <h3>🧠 Summarization <span class="pill todo">Not started</span></h3>
+      <p><code>server/app/services/summarizer.py</code> defines a <code>SummarizerProvider</code> ABC as an extension point. The default implementation raises <code>NotImplementedError</code>.</p>
+      <p><strong>Tested:</strong> nothing — no provider implemented yet, no LLM wired in.</p>
+    </div>
+
+  </div>
+</section>
+
+<section>
+  <h2>Tested vs. not tested</h2>
+  <table>
+    <tr><th>Area</th><th>Status</th><th>Detail</th></tr>
+    <tr>
+      <td>Extension client logic</td>
+      <td><span class="dot done"></span> Tested</td>
+      <td>15 Vitest+jsdom unit tests covering player detection, content-script injection, API client, segment sync.</td>
+    </tr>
+    <tr>
+      <td>Server orchestration (download/dedup/queue/WS)</td>
+      <td><span class="dot done"></span> Tested</td>
+      <td>6 pytest tests using SQLite + fakeredis as stand-ins for Postgres/Redis.</td>
+    </tr>
+    <tr>
+      <td>Server ↔ worker HTTP/queue contract</td>
+      <td><span class="dot done"></span> Tested</td>
+      <td>Cross-component integration test boots the real FastAPI app in-process and drives it through the worker's redis_queue/client code.</td>
+    </tr>
+    <tr>
+      <td>Real GPU transcription (ivrit-ai/whisper-large-v3-turbo-ct2 + faster-whisper)</td>
+      <td><span class="dot todo"></span> Not tested</td>
+      <td>Worker runs in <code>FAKE_TRANSCRIBE=true</code> stub mode; no RTX 4090 wiring done yet.</td>
+    </tr>
+    <tr>
+      <td>Real Postgres / Redis (vs. fakes)</td>
+      <td><span class="dot partial"></span> Not exercised</td>
+      <td><code>docker-compose.yml</code> defines the real services, but the test suites deliberately avoid them — never run against the real containers yet.</td>
+    </tr>
+    <tr>
+      <td>End-to-end manual run (extension → real server → real worker, in browser)</td>
+      <td><span class="dot todo"></span> Not done</td>
+      <td>Only unit/integration tests have run; no live browser/docker walkthrough yet.</td>
+    </tr>
+    <tr>
+      <td>Auth hardening (beyond shared-secret internal token)</td>
+      <td><span class="dot todo"></span> Not started</td>
+      <td>Internal token check exists between server and worker; no user-facing auth layer.</td>
+    </tr>
+    <tr>
+      <td>Retries / backoff for failed jobs</td>
+      <td><span class="dot todo"></span> Not started</td>
+      <td>No retry logic on download, transcription, or queue failures yet.</td>
+    </tr>
+    <tr>
+      <td>Lecture/assignment summarization</td>
+      <td><span class="dot todo"></span> Not started</td>
+      <td>Stub ABC only (<code>summarizer.py</code>); no LLM provider wired in.</td>
+    </tr>
+  </table>
+  <div class="legend">
+    <span><i class="dot done"></i>Built &amp; tested</span>
+    <span><i class="dot partial"></i>Built but not fully verified</span>
+    <span><i class="dot todo"></i>Not started</span>
+  </div>
+</section>
+
+<section>
+  <h2>Run it yourself</h2>
+  <table>
+    <tr><th>Step</th><th>Command</th></tr>
+    <tr><td>Postgres + Redis + server</td><td><code>cp server/.env.example server/.env &amp;&amp; docker compose up --build</code></td></tr>
+    <tr><td>GPU worker (stub mode, no GPU needed)</td><td><code>cd gpu_worker &amp;&amp; pip install -r requirements.txt &amp;&amp; python worker.py</code></td></tr>
+    <tr><td>Extension</td><td><code>cd extension &amp;&amp; npm install &amp;&amp; npm run build</code> → load unpacked in <code>chrome://extensions</code></td></tr>
+    <tr><td>Run all tests</td><td><code>server</code>: <code>pytest</code> &nbsp;|&nbsp; <code>gpu_worker</code>: <code>pytest</code> &nbsp;|&nbsp; <code>extension</code>: <code>npm test</code></td></tr>
+  </table>
+</section>
+
+</main>
+
+<footer>
+  Generated from repo state + project memory on 2026-06-19. Repo: MoodlePRO (branch <code>main</code>).
+</footer>
+
+</body>
+</html>

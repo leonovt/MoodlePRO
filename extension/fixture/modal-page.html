@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>modal check</title></head>
+<body style="background:#111;color:#fff;font-family:sans-serif;">
+  <h1>Host page (simulates BGU Moodle's own dark styling)</h1>
+  <script type="module">
+    import { createResultModal } from "/src/content/result-modal.js";
+    window.__modal = createResultModal(document);
+    window.__showQuiz = () => {
+      window.__modal.showQuiz([
+        {
+          question: "What does MVC stand for?",
+          options: ["Model View Controller", "Main View Class", "Modular Virtual Component", "Multi Variable Calculus"],
+          correct_index: 0,
+          explanation: "MVC separates data, UI, and control logic.",
+        },
+      ]);
+    };
+  </script>
+</body>
+</html>

@@ -30,6 +30,22 @@ describe("findBguVideoPlayer", () => {
     const doc = makeDoc(`<video class="vjs-tech" src="https://example.com/stream.m3u8"></video>`);
     expect(findBguVideoPlayer(doc)).toBeNull();
   });
+
+  it("detects a real BGU video-js player before vjs-tech/src is set, via a nested <source>", () => {
+    const doc = makeDoc(`
+      <html><body>
+        <video id="my-player" class="video-js vjs-fluid vjs-default-skin vjs-big-play-centered nomediaplugin"
+               poster="https://moodle.bgu.ac.il/moodle/local/video_directory/thumb.php?id=439903">
+          <source src="https://d111.cloudfront.net/lec1.mp4" type="video/mp4" />
+        </video>
+      </body></html>
+    `);
+
+    const result = findBguVideoPlayer(doc);
+    expect(result).not.toBeNull();
+    expect(result.mp4Url).toBe("https://d111.cloudfront.net/lec1.mp4");
+    expect(result.moodleVideoId).toBe("439903");
+  });
 });
 
 describe("findMoodleVideoId", () => {

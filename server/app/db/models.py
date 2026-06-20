@@ -37,10 +37,10 @@ class Job(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_new_id)
     video_url: Mapped[str] = mapped_column(Text)
     moodle_video_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    # The audio hash a job will be (or was) transcribed under. This is a dedup *key*,
-    # not an enforced FK: on a cache miss the job records its hash before any transcript
-    # row exists, so a FK to transcripts.audio_hash would (and did) violate on insert.
-    # Indexed because _to_response / dedup look transcripts up by it.
+    # Dedup lookup key into Transcript.audio_hash, NOT a hard FK: a job records its
+    # hash as soon as audio extraction finishes, before a matching transcript exists,
+    # so a real FK would (and did) violate on insert. Indexed because _to_response /
+    # dedup look transcripts up by it.
     audio_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(32), default="pending")
     error: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -1,23 +1,25 @@
 import { createApiClient } from "../shared/api-client.js";
 import { MSG } from "../shared/messages.js";
+import { attachChapters } from "./chapters.js";
 import { createCaptionOverlay } from "./caption-overlay.js";
+import { injectCourseItemButtons } from "./course-items.js";
+import { injectCourseToolbar } from "./course-toolbar.js";
+import { injectCourseDownloader } from "./course-downloader.js";
 import { findBguVideoPlayer } from "./detect-player.js";
+import { backfillCompletedJob, fallbackForMissedSegments } from "./segment-fallback.js";
 import { createSidebar } from "./sidebar.js";
+import { createVideoToolbar } from "./video-toolbar.js";
 
 const DEFAULT_SERVER_BASE_URL = "http://localhost:8000";
 
-function addDownloadButton(doc, sidebar, api, jobId) {
-  const button = doc.createElement("button");
-  button.textContent = "Download Transcript";
-  button.style.cssText = "display:block;width:100%;margin-bottom:8px;padding:6px;";
-  button.addEventListener("click", () => {
+function addDownloadButton(doc, toolbar, api, jobId) {
+  toolbar.addButton("Download", () => {
     chrome.runtime.sendMessage({
       type: MSG.DOWNLOAD_TRANSCRIPT,
       txtUrl: api.txtUrl(jobId),
       srtUrl: api.srtUrl(jobId),
     });
   });
-  sidebar.panel.insertBefore(button, sidebar.panel.firstChild);
 }
 
 function connectJobSocket(api, jobId, onEvent) {
@@ -28,18 +30,31 @@ function connectJobSocket(api, jobId, onEvent) {
 
 export async function main(doc = document, serverBaseUrl = DEFAULT_SERVER_BASE_URL) {
   const player = findBguVideoPlayer(doc);
-  if (!player) return null;
+
+  if (!player) {
+    if (doc.querySelector('li[data-for="cmitem"]')) {
+      injectCourseItemButtons(doc, serverBaseUrl);
+      injectCourseDownloader(doc, serverBaseUrl);
+      return null;
+    }
+    if (doc.querySelector('[data-region="courses-view"]')) {
+      injectCourseToolbar(doc, serverBaseUrl);
+      return null;
+    }
+    return null;
+  }
 
   const api = createApiClient(serverBaseUrl);
   const sidebar = createSidebar(doc, player.videoEl);
   const overlay = createCaptionOverlay(doc, player.videoEl);
+  const toolbar = createVideoToolbar(doc, player.videoEl);
 
   const job = await api.createJob({ videoUrl: player.mp4Url, moodleVideoId: player.moodleVideoId });
-  addDownloadButton(doc, sidebar, api, job.id);
+  addDownloadButton(doc, toolbar, api, job.id);
+  attachChapters(doc, api, job.id, player.videoEl, toolbar).catch(() => {});
 
   if (job.status === "completed" && job.text) {
-    sidebar.addSegment({ text: job.text, start: 0, end: Number.MAX_SAFE_INTEGER });
-    overlay.addSegment({ text: job.text, start: 0, end: Number.MAX_SAFE_INTEGER });
+    await backfillCompletedJob(api, job.id, job.text, sidebar, overlay);
     return { player, api, job, socket: null };
   }
 
@@ -49,6 +64,7 @@ export async function main(doc = document, serverBaseUrl = DEFAULT_SERVER_BASE_U
       overlay.addSegment(event);
     }
   });
+  fallbackForMissedSegments(api, job.id, sidebar, overlay).catch(() => {});
 
   return { player, api, job, socket, sidebar, overlay };
 }

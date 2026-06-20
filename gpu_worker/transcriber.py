@@ -1,3 +1,4 @@
+import wave
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -29,13 +30,31 @@ class FakeTranscriber(Transcriber):
         "היום נדבר על מערכות מבוזרות",
         "תודה רבה ולהתראות",
     ]
+    _SEGMENT_SECONDS = 2.5
 
     def transcribe(self, audio_path: Path) -> Iterator[Segment]:
+        duration = self._audio_duration(audio_path)
         t = 0.0
-        for line in self._SAMPLE_LINES:
-            start, end = t, t + 2.5
-            yield Segment(text=line, start=start, end=end)
+        i = 0
+        # Float accumulation of _SEGMENT_SECONDS can leave t a hair under an exact
+        # multiple of duration; without the epsilon that produces a trailing
+        # zero-duration segment (e.g. "15,000 --> 15,000").
+        while duration - t > 1e-6:
+            line = self._SAMPLE_LINES[i % len(self._SAMPLE_LINES)]
+            end = min(t + self._SEGMENT_SECONDS, duration)
+            yield Segment(text=line, start=t, end=end)
             t = end
+            i += 1
+
+    @staticmethod
+    def _audio_duration(audio_path: Path) -> float:
+        # The server always hands the worker a PCM .wav (ffmpeg -ar 16000 -ac 1),
+        # so the wave module can read its length without any extra dependency.
+        try:
+            with wave.open(str(audio_path), "rb") as f:
+                return f.getnframes() / f.getframerate()
+        except (wave.Error, EOFError, OSError):
+            return len(FakeTranscriber._SAMPLE_LINES) * FakeTranscriber._SEGMENT_SECONDS
 
 
 class WhisperTranscriber(Transcriber):

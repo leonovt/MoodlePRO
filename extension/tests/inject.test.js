@@ -51,6 +51,7 @@ describe("inject main()", () => {
     expect(result.job.id).toBe("job-1");
     expect(document.getElementById("moodlepro-sidebar")).not.toBeNull();
     expect(document.getElementById("moodlepro-caption-overlay")).not.toBeNull();
+    expect(document.getElementById("moodlepro-video-toolbar")).not.toBeNull();
 
     const socket = FakeWebSocket.instances[0];
     expect(socket.url).toBe("ws://localhost:8000/ws/jobs/job-1");
@@ -77,7 +78,7 @@ describe("inject main()", () => {
   it("sends a DOWNLOAD_TRANSCRIPT message to the background worker on button click", async () => {
     await main(document, "http://localhost:8000");
 
-    const button = document.querySelector("#moodlepro-sidebar button");
+    const button = document.querySelector("#moodlepro-video-toolbar button");
     button.click();
 
     expect(global.chrome.runtime.sendMessage).toHaveBeenCalledWith(
