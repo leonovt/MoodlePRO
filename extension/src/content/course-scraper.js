@@ -19,16 +19,26 @@ function extractText(li) {
   return clone.textContent.trim().replace(/\s+/g, " ");
 }
 
+function findSectionName(li) {
+  const section = li.closest("li.section");
+  if (!section) return null;
+  const heading = section.querySelector('[class*="sectionname"]');
+  return heading ? heading.textContent.trim() : null;
+}
+
 export function scrapeCourseItems(doc) {
   const items = doc.querySelectorAll('li[data-for="cmitem"]');
   return Array.from(items).map((li) => {
     const titleEl = li.querySelector(".instancename");
     const title = titleEl ? titleEl.textContent.trim() : "";
+    const link = li.querySelector(".activityname a, a[href]");
     return {
       id: li.getAttribute("data-id"),
       type: classifyType(li),
       title,
       text: extractText(li),
+      href: link ? link.href : null,
+      section: findSectionName(li),
     };
   });
 }

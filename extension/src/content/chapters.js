@@ -27,11 +27,17 @@ export async function attachChapters(doc, api, jobId, videoEl) {
   const panel = doc.createElement("div");
   panel.id = "moodlepro-chapters";
   panel.style.cssText = [
-    "position:fixed", "bottom:0", "right:0", "width:320px", "max-height:40vh",
-    "overflow-y:auto", "background:#1a1a1a", "color:#eee", "z-index:2147483000",
+    "margin-top:12px", "max-height:40vh",
+    "overflow-y:auto", "background:#1a1a1a", "color:#eee",
     "font-family:sans-serif", "font-size:13px", "padding:10px",
-    "box-shadow:-2px 0 8px rgba(0,0,0,.4)",
+    "border-radius:8px", "box-shadow:0 1px 4px rgba(0,0,0,.3)",
   ].join(";");
+
+  const mountAfter =
+    doc.getElementById("moodlepro-sidebar") ??
+    (videoEl && typeof videoEl.closest === "function"
+      ? videoEl.closest(".block_video-responsive-video") || videoEl.parentElement
+      : null);
 
   chapters.forEach((chapter) => {
     const row = doc.createElement("div");
@@ -91,6 +97,10 @@ export async function attachChapters(doc, api, jobId, videoEl) {
     panel.appendChild(row);
   });
 
-  doc.body.appendChild(panel);
+  if (mountAfter && mountAfter.insertAdjacentElement) {
+    mountAfter.insertAdjacentElement("afterend", panel);
+  } else {
+    doc.body.appendChild(panel);
+  }
   return panel;
 }

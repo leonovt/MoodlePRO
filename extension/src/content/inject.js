@@ -4,6 +4,7 @@ import { attachChapters } from "./chapters.js";
 import { createCaptionOverlay } from "./caption-overlay.js";
 import { injectCourseItemButtons } from "./course-items.js";
 import { injectCourseToolbar } from "./course-toolbar.js";
+import { injectCourseDownloader } from "./course-downloader.js";
 import { findBguVideoPlayer } from "./detect-player.js";
 import { fallbackForMissedSegments } from "./segment-fallback.js";
 import { createSidebar } from "./sidebar.js";
@@ -37,6 +38,7 @@ export async function main(doc = document, serverBaseUrl = DEFAULT_SERVER_BASE_U
   if (!player) {
     if (doc.querySelector('li[data-for="cmitem"]')) {
       injectCourseItemButtons(doc, serverBaseUrl);
+      injectCourseDownloader(doc, serverBaseUrl);
       return null;
     }
     if (doc.querySelector('[data-region="courses-view"]')) {

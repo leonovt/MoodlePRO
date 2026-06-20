@@ -1,16 +1,24 @@
 import { findActiveSegmentIndex } from "./segment-sync.js";
 
-/** Injects a fixed-position auto-scrolling transcript panel and keeps it in sync with the video. */
+/** Injects an in-page, auto-scrolling transcript panel right below the video and keeps it in sync. */
 export function createSidebar(doc, videoEl) {
   const panel = doc.createElement("div");
   panel.id = "moodlepro-sidebar";
   panel.style.cssText = [
-    "position:fixed", "top:0", "right:0", "width:320px", "height:100vh",
-    "overflow-y:auto", "background:#111", "color:#eee", "z-index:2147483000",
+    "margin-top:12px", "max-height:50vh", "overflow-y:auto", "background:#111", "color:#eee",
     "font-family:sans-serif", "font-size:14px", "padding:12px", "direction:rtl",
-    "box-shadow:-2px 0 8px rgba(0,0,0,.4)",
+    "border-radius:8px", "box-shadow:0 1px 4px rgba(0,0,0,.3)",
   ].join(";");
-  doc.body.appendChild(panel);
+
+  const mountAfter =
+    videoEl && typeof videoEl.closest === "function"
+      ? videoEl.closest(".block_video-responsive-video") || videoEl.parentElement
+      : null;
+  if (mountAfter && mountAfter.insertAdjacentElement) {
+    mountAfter.insertAdjacentElement("afterend", panel);
+  } else {
+    doc.body.appendChild(panel);
+  }
 
   const segments = [];
   let activeIndex = -1;
