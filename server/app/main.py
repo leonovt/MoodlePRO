@@ -2,9 +2,10 @@ import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from redis.asyncio import Redis
 
-from app.api import internal, jobs, ws
+from app.api import content, internal, jobs, ws
 from app.core.config import settings
 from app.db.session import init_db
 
@@ -23,9 +24,18 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="MoodlePRO Processing Server", lifespan=lifespan)
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://moodle.bgu.ac.il"],
+    allow_origin_regex=r"chrome-extension://.*",
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(jobs.router)
 app.include_router(internal.router)
 app.include_router(ws.router)
+app.include_router(content.router)
 
 
 @app.get("/health")

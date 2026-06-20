@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<title>MoodlePRO — Summary &amp; Quiz Feature Plan</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --card: #161b22;
+    --border: #2a313c;
+    --accent: #4fa3ff;
+    --accent2: #6fd98f;
+    --accent3: #ffb454;
+    --text: #d7dde3;
+    --muted: #8b96a3;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+  }
+  header {
+    padding: 40px 24px 24px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 { margin: 0 0 8px; font-size: 28px; }
+  header p { margin: 0; color: var(--muted); }
+  .badges { margin-top: 16px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+  .badge {
+    font-size: 12px; padding: 4px 10px; border-radius: 999px;
+    background: rgba(79,163,255,0.12); color: var(--accent); border: 1px solid rgba(79,163,255,0.3);
+  }
+  main { max-width: 1000px; margin: 0 auto; padding: 32px 24px 64px; }
+  .features {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 18px; margin-bottom: 40px;
+  }
+  .feature-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px;
+  }
+  .feature-card .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 50%; background: var(--accent);
+    color: #06131f; font-weight: 700; font-size: 14px; margin-bottom: 12px;
+  }
+  .feature-card h3 { margin: 0 0 8px; font-size: 16px; }
+  .feature-card p { margin: 0; color: var(--muted); font-size: 14px; }
+  section { margin-bottom: 40px; }
+  h2 {
+    font-size: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .dot.server { background: var(--accent2); }
+  .dot.extension { background: var(--accent); }
+  .dot.exec { background: var(--accent3); }
+  table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  code {
+    background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px;
+    font-size: 13px; color: #e6c07b;
+  }
+  .pill { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 6px; margin-right: 4px; }
+  .pill.new { background: rgba(111,217,143,0.15); color: var(--accent2); }
+  .pill.endpoint { background: rgba(79,163,255,0.15); color: var(--accent); }
+  .dom-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-top: 12px;
+  }
+  .dom-card h4 { margin: 0 0 8px; font-size: 14px; color: var(--accent3); }
+  pre {
+    background: #0a0d11; border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px; overflow-x: auto; font-size: 12.5px; margin: 8px 0 0;
+  }
+  ol.steps { padding-left: 20px; }
+  ol.steps li { margin-bottom: 10px; }
+  footer {
+    text-align: center; color: var(--muted); font-size: 13px; padding: 24px;
+    border-top: 1px solid var(--border);
+  }
+  .status-note {
+    background: rgba(255,180,84,0.08); border: 1px solid rgba(255,180,84,0.3);
+    border-radius: 10px; padding: 14px 18px; font-size: 14px; color: #ffd9a0;
+    margin-bottom: 32px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>MoodlePRO — Summary &amp; Quiz Feature Plan</h1>
+  <p>Per-item summaries, course-wide scoped summaries, and video topic chaptering</p>
+  <div class="badges">
+    <span class="badge">Stubbed LLM (fake output)</span>
+    <span class="badge">Real BGU DOM confirmed</span>
+    <span class="badge">2 parallel build agents</span>
+  </div>
+</header>
+
+<main>
+
+  <div class="status-note">
+    📋 <strong>Status: planning complete, build in progress.</strong>
+    This page describes what was approved and is about to be built — not yet a results report.
+    A separate <code>FEATURE_STATUS.html</code> will be generated once implementation and tests finish.
+  </div>
+
+  <section>
+    <h2>What's being built</h2>
+    <div class="features">
+      <div class="feature-card">
+        <div class="num">1</div>
+        <h3>Per-item Summary + Quiz</h3>
+        <p>A button appears next to every course activity (assignment, resource, forum, zoom, etc.) on the course page. Click it to get a summary and a quiz for that single item.</p>
+      </div>
+      <div class="feature-card">
+        <div class="num">2</div>
+        <h3>Course-wide scoped summary</h3>
+        <p>On the courses dashboard, each course gets a "Summarize" button with a scope picker: <strong>Everything</strong>, <strong>Assignments only</strong>, or <strong>Lectures only</strong>.</p>
+      </div>
+      <div class="feature-card">
+        <div class="num">3</div>
+        <h3>Video topic chapters</h3>
+        <p>Once a lecture's transcript is ready, it's split into topic "chapters." Each chapter gets its own Summary and Quiz button, and clicking a chapter seeks the video to that point.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="dot server"></span> Server changes</h2>
+    <table>
+      <tr><th>File</th><th>Change</th></tr>
+      <tr>
+        <td><code>app/services/summarizer.py</code></td>
+        <td><span class="pill new">new</span> <code>FakeSummarizer</code> — deterministic canned summary, no real LLM call</td>
+      </tr>
+      <tr>
+        <td><code>app/services/quiz.py</code></td>
+        <td><span class="pill new">new file</span> <code>QuizGenerator</code> ABC + <code>FakeQuizGenerator</code> — 3 canned multiple-choice questions</td>
+      </tr>
+      <tr>
+        <td><code>app/services/chaptering.py</code></td>
+        <td><span class="pill new">new file</span> <code>Chapterer</code> ABC + <code>FakeChapterer</code> — groups a job's segments into topic chapters with real timestamps</td>
+      </tr>
+      <tr>
+        <td><code>app/schemas.py</code></td>
+        <td>Adds <code>SummaryRequest/Response</code>, <code>QuizRequest/Response</code>, <code>CourseItem</code>, <code>CourseSummaryScope</code>, <code>CourseSummaryRequest</code>, <code>ChapterResponse</code></td>
+      </tr>
+      <tr>
+        <td><code>app/api/content.py</code></td>
+        <td><span class="pill new">new router</span> registered in <code>main.py</code></td>
+      </tr>
+    </table>
+
+    <h4 style="margin-top:20px; color:var(--muted); font-weight:600; font-size:13px; text-transform:uppercase;">New endpoints</h4>
+    <table>
+      <tr><th>Method</th><th>Path</th><th>Purpose</th></tr>
+      <tr><td><span class="pill endpoint">POST</span></td><td><code>/items/summary</code></td><td>Fake summary for one scraped item</td></tr>
+      <tr><td><span class="pill endpoint">POST</span></td><td><code>/items/quiz</code></td><td>Fake quiz for one scraped item</td></tr>
+      <tr><td><span class="pill endpoint">POST</span></td><td><code>/courses/summary</code></td><td>Aggregated fake summary+quiz over a scope-filtered item list</td></tr>
+      <tr><td><span class="pill endpoint">GET</span></td><td><code>/jobs/{job_id}/chapters</code></td><td>Fake topic chapters for a finished transcription job</td></tr>
+      <tr><td><span class="pill endpoint">POST</span></td><td><code>/jobs/{job_id}/chapters/{chapter_id}/summary</code></td><td>Fake summary scoped to one chapter</td></tr>
+      <tr><td><span class="pill endpoint">POST</span></td><td><code>/jobs/{job_id}/chapters/{chapter_id}/quiz</code></td><td>Fake quiz scoped to one chapter</td></tr>
+    </table>
+    <p style="color:var(--muted); font-size:13px; margin-top:14px;">
+      The server never logs into Moodle itself — it has no session cookie. The extension scrapes visible page text and POSTs it; the server just runs the (currently fake) summarizer/quiz/chaptering logic over whatever text it's given.
+    </p>
+  </section>
+
+  <section>
+    <h2><span class="dot extension"></span> Extension changes</h2>
+    <table>
+      <tr><th>File</th><th>Role</th></tr>
+      <tr><td><code>src/content/result-modal.js</code></td><td><span class="pill new">new</span> Shared popup: renders a summary string + click-to-reveal quiz</td></tr>
+      <tr><td><code>src/content/course-scraper.js</code></td><td><span class="pill new">new</span> Walks <code>li.activity[data-for="cmitem"]</code>, classifies each as <code>assignment</code> / <code>lecture</code> / <code>other</code></td></tr>
+      <tr><td><code>src/content/course-items.js</code></td><td><span class="pill new">new</span> Injects a Summary+Quiz button per activity on the course page</td></tr>
+      <tr><td><code>src/content/course-toolbar.js</code></td><td><span class="pill new">new</span> Dashboard: <code>MutationObserver</code> + per-course "Summarize" button with scope popover</td></tr>
+      <tr><td><code>src/content/chapters.js</code></td><td><span class="pill new">new</span> Renders chapter list once a video job completes; per-chapter buttons + video seek</td></tr>
+      <tr><td><code>src/content/inject.js</code></td><td>Gets a small page router: video page vs. course page vs. dashboard</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>Confirmed real DOM structure (from your sample pages)</h2>
+    <div class="dom-card">
+      <h4>view-course.php — course activity item</h4>
+      <pre>&lt;li class="activity activity-wrapper modtype_resource" data-id="..." data-for="cmitem"&gt;
+  &lt;div class="activity-item ..." data-region="activity-card"&gt;
+    &lt;div class="activity-name-area activity-instance"&gt;
+      &lt;div class="activitytitle modtype_resource"&gt;
+        &lt;div class="activityname"&gt;
+          &lt;a href="/mod/resource/view.php?id=..." class="aalink stretched-link"&gt;
+            &lt;span class="instancename"&gt;Item title&lt;/span&gt;
+          &lt;/a&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/li&gt;</pre>
+    </div>
+    <div class="dom-card">
+      <h4>courses-html — dashboard course list (loads dynamically)</h4>
+      <pre>&lt;div data-region="courses-view" data-display="card"&gt;
+  &lt;div data-region="course-view-content"&gt;
+    &lt;ul class="list-group unstyled" data-region="courses-list"&gt;
+      &lt;!-- course cards injected by Moodle's own JS at runtime --&gt;
+      &lt;!-- li &gt; a[href*="course/view.php?id="] --&gt;
+    &lt;/ul&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</pre>
+    </div>
+    <div class="dom-card">
+      <h4>viewvideo.php — video player (matches existing detect-player.js)</h4>
+      <pre>&lt;video id="my-player" class="video-js ... vjs-tech" ...&gt;
+  &lt;source src="https://...cloudfront.../lecture.mp4" type="video/mp4" /&gt;
+&lt;/video&gt;
+&lt;!-- poster has the moodle video id: thumb.php?id=439903 --&gt;</pre>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="dot exec"></span> Build &amp; verify steps</h2>
+    <ol class="steps">
+      <li><strong>Agent A (server)</strong> implements the 3 fake services, schemas, router, wiring, and <code>test_content.py</code>, then runs <code>pytest</code> itself.</li>
+      <li><strong>Agent B (extension)</strong> implements the modal, scraper, course-items, course-toolbar, chapters modules, the <code>inject.js</code> router, and 4 new vitest files, then runs <code>npx vitest run</code> itself.</li>
+      <li>Both run in parallel — they touch disjoint directories, so there's no merge conflict risk.</li>
+      <li>I review both diffs and re-run the <strong>full</strong> test suite (server + gpu_worker + extension) to confirm nothing regressed.</li>
+      <li>I generate <code>FEATURE_STATUS.html</code> with pass/fail counts and sample fake JSON output from each new endpoint.</li>
+    </ol>
+  </section>
+
+</main>
+
+<footer>
+  MoodlePRO — self-hosted BGU lecture transcription, summarization &amp; quiz pipeline · plan generated 2026-06-20
+</footer>
+
+</body>
+</html>

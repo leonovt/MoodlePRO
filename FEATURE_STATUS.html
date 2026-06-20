@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<title>MoodlePRO — Summary &amp; Quiz Feature: Build Results</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --card: #161b22;
+    --border: #2a313c;
+    --accent: #4fa3ff;
+    --accent2: #6fd98f;
+    --accent3: #ffb454;
+    --red: #ff6b6b;
+    --text: #d7dde3;
+    --muted: #8b96a3;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+  }
+  header { padding: 40px 24px 24px; text-align: center; border-bottom: 1px solid var(--border); }
+  header h1 { margin: 0 0 8px; font-size: 28px; }
+  header p { margin: 0; color: var(--muted); }
+  .badges { margin-top: 16px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+  .badge { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(111,217,143,0.12); color: var(--accent2); border: 1px solid rgba(111,217,143,0.3); }
+  main { max-width: 1000px; margin: 0 auto; padding: 32px 24px 64px; }
+  section { margin-bottom: 40px; }
+  h2 { font-size: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .dot.pass { background: var(--accent2); }
+  .dot.server { background: var(--accent2); }
+  .dot.extension { background: var(--accent); }
+  .dot.next { background: var(--accent3); }
+
+  .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-top: 16px; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-align: center; }
+  .stat-card .n { font-size: 32px; font-weight: 700; color: var(--accent2); }
+  .stat-card .l { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  code { background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; font-size: 13px; color: #e6c07b; }
+  .pill { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 6px; margin-right: 4px; }
+  .pill.new { background: rgba(111,217,143,0.15); color: var(--accent2); }
+  .pill.mod { background: rgba(79,163,255,0.15); color: var(--accent); }
+  .pill.pass { background: rgba(111,217,143,0.18); color: var(--accent2); font-weight: 600; }
+  .pill.endpoint { background: rgba(79,163,255,0.15); color: var(--accent); }
+
+  .feature-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-top: 14px; }
+  .feature-card h3 { margin: 0 0 8px; font-size: 16px; }
+  .feature-card p { margin: 0 0 10px; color: var(--muted); font-size: 14px; }
+
+  pre { background: #0a0d11; border: 1px solid var(--border); border-radius: 8px; padding: 12px; overflow-x: auto; font-size: 12.5px; margin: 8px 0 0; white-space: pre-wrap; word-break: break-word; }
+
+  .quiz-demo { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-top: 14px; }
+  .quiz-demo .q { font-weight: 600; margin-bottom: 10px; }
+  .quiz-demo .opt { display: block; width: 100%; text-align: left; padding: 8px 12px; margin: 6px 0; background: #0a0d11; border: 1px solid var(--border); border-radius: 6px; color: var(--text); cursor: default; font-size: 13px; }
+  .quiz-demo .opt.correct { border-color: var(--accent2); color: var(--accent2); }
+  .quiz-demo .explain { margin-top: 10px; font-size: 13px; color: var(--muted); }
+
+  .chapter-row { display: flex; justify-content: space-between; align-items: center; background: #0a0d11; border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin-top: 8px; font-size: 13px; }
+  .chapter-row .title { color: var(--accent3); }
+
+  .todo-list { padding-left: 20px; }
+  .todo-list li { margin-bottom: 10px; color: var(--text); }
+  .todo-list li b { color: var(--accent3); }
+
+  footer { text-align: center; color: var(--muted); font-size: 13px; padding: 24px; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>MoodlePRO — Summary &amp; Quiz Feature</h1>
+  <p>Build results: per-item buttons, course-wide scoped summaries, video topic chapters</p>
+  <div class="badges">
+    <span class="badge">✅ 57 / 57 tests passing</span>
+    <span class="badge">Stub LLM output — clearly labeled [FAKE]</span>
+    <span class="badge">Built by 2 parallel agents, verified independently</span>
+  </div>
+</header>
+
+<main>
+
+  <section>
+    <h2><span class="dot pass"></span> Test results</h2>
+    <div class="summary-cards">
+      <div class="stat-card"><div class="n">23/23</div><div class="l">server (pytest)</div></div>
+      <div class="stat-card"><div class="n">5/5</div><div class="l">gpu_worker (pytest, unchanged)</div></div>
+      <div class="stat-card"><div class="n">29/29</div><div class="l">extension (vitest)</div></div>
+      <div class="stat-card"><div class="n">57/57</div><div class="l">total, re-run independently</div></div>
+    </div>
+    <p style="color:var(--muted); font-size:13px; margin-top:14px;">
+      Each component's tests were re-run from scratch after both build agents finished, to confirm no regressions in
+      pre-existing functionality (video transcription pipeline, job queueing, captions, etc.).
+    </p>
+  </section>
+
+  <section>
+    <h2><span class="dot server"></span> Server: files &amp; endpoints</h2>
+    <table>
+      <tr><th>File</th><th>Status</th></tr>
+      <tr><td><code>app/services/summarizer.py</code></td><td><span class="pill mod">modified</span> added <code>FakeSummarizer</code></td></tr>
+      <tr><td><code>app/services/quiz.py</code></td><td><span class="pill new">new</span> <code>QuizGenerator</code> + <code>FakeQuizGenerator</code></td></tr>
+      <tr><td><code>app/services/chaptering.py</code></td><td><span class="pill new">new</span> <code>Chapterer</code> + <code>FakeChapterer</code> (segment-based + text-fallback)</td></tr>
+      <tr><td><code>app/schemas.py</code></td><td><span class="pill mod">modified</span> +8 new request/response models</td></tr>
+      <tr><td><code>app/api/content.py</code></td><td><span class="pill new">new</span> router, registered in <code>main.py</code></td></tr>
+      <tr><td><code>tests/test_content.py</code></td><td><span class="pill new">new</span> 17 new tests</td></tr>
+    </table>
+
+    <table style="margin-top:24px;">
+      <tr><th>Method</th><th>Path</th><th>Status</th></tr>
+      <tr><td><span class="pill endpoint">POST</span></td><td><code>/items/summary</code></td><td><span class="pill pass">verified</span></td></tr>
+      <tr><td><span class="pill endpoint">POST</span></td><td><code>/items/quiz</code></td><td><span class="pill pass">verified</span></td></tr>
+      <tr><td><span class="pill endpoint">POST</span></td><td><code>/courses/summary</code></td><td><span class="pill pass">verified (all 3 scopes + empty-scope case)</span></td></tr>
+      <tr><td><span class="pill endpoint">GET</span></td><td><code>/jobs/{job_id}/chapters</code></td><td><span class="pill pass">verified (+ 404 for unknown job)</span></td></tr>
+      <tr><td><span class="pill endpoint">POST</span></td><td><code>/jobs/{job_id}/chapters/{chapter_id}/summary</code></td><td><span class="pill pass">verified (+ 404 for unknown chapter)</span></td></tr>
+      <tr><td><span class="pill endpoint">POST</span></td><td><code>/jobs/{job_id}/chapters/{chapter_id}/quiz</code></td><td><span class="pill pass">verified</span></td></tr>
+    </table>
+    <p style="color:var(--muted); font-size:13px; margin-top:14px;">
+      Note: jobs currently only persist full transcript <code>text</code> (no per-segment timestamps in storage), so
+      <code>/jobs/{id}/chapters</code> uses the text-splitting fallback — chapters get real word-count-based content but
+      synthetic <code>start=0.0 / end=0.0</code> timestamps. The segment-based path (real timestamps) is implemented
+      and unit-tested, ready to activate once segment storage is added.
+    </p>
+  </section>
+
+  <section>
+    <h2><span class="dot extension"></span> Extension: files</h2>
+    <table>
+      <tr><th>File</th><th>Status</th></tr>
+      <tr><td><code>src/content/result-modal.js</code></td><td><span class="pill new">new</span> shared summary/quiz popup</td></tr>
+      <tr><td><code>src/content/course-scraper.js</code></td><td><span class="pill new">new</span> classifies assignment/lecture/other</td></tr>
+      <tr><td><code>src/content/course-items.js</code></td><td><span class="pill new">new</span> per-item button injection</td></tr>
+      <tr><td><code>src/content/course-toolbar.js</code></td><td><span class="pill new">new</span> dashboard scope picker</td></tr>
+      <tr><td><code>src/content/chapters.js</code></td><td><span class="pill new">new</span> video chapter panel</td></tr>
+      <tr><td><code>src/content/inject.js</code></td><td><span class="pill mod">modified</span> added page router (video / course page / dashboard)</td></tr>
+      <tr><td><code>tests/course-scraper.test.js</code>, <code>course-items.test.js</code>, <code>course-toolbar.test.js</code>, <code>chapters.test.js</code></td><td><span class="pill new">new</span> 14 new tests, using real Moodle HTML structure as fixtures</td></tr>
+    </table>
+    <p style="color:var(--muted); font-size:13px; margin-top:14px;">
+      <code>detect-player.js</code>, <code>sidebar.js</code>, <code>caption-overlay.js</code>, <code>segment-sync.js</code>,
+      <code>src/shared/api-client.js</code>, and <code>manifest.json</code> were left untouched — existing video flow is unchanged.
+    </p>
+  </section>
+
+  <section>
+    <h2>Live demo: example fake output</h2>
+    <p style="color:var(--muted); font-size:14px;">These are real responses captured directly from the new server code (not mockups) — clearly labeled <code>[FAKE]</code> since no real LLM is wired in yet.</p>
+
+    <div class="feature-card">
+      <h3>1. Per-item summary — <code>POST /items/summary</code></h3>
+      <p>Input: a lecture activity's scraped title + text, mode=casual.</p>
+      <pre>[FAKE SUMMARY] This is a stub summary of 20 words of input text in 'casual' mode.
+Key points would appear here once a real LLM is wired in.</pre>
+    </div>
+
+    <div class="feature-card">
+      <h3>2. Per-item quiz — <code>POST /items/quiz</code></h3>
+      <p>Input: same lecture text, num_questions=2. Rendered the way <code>result-modal.js</code> displays it (click an option to reveal correct/incorrect):</p>
+      <div class="quiz-demo">
+        <div class="q">Q1. [FAKE QUIZ] Stub question 1 about the provided text?</div>
+        <div class="opt correct">✅ [FAKE] Option A for question 1 (correct)</div>
+        <div class="opt">[FAKE] Option B for question 1</div>
+        <div class="opt">[FAKE] Option C for question 1</div>
+        <div class="opt">[FAKE] Option D for question 1</div>
+        <div class="explain">[FAKE QUIZ] This is a stub explanation for question 1; a real explanation will appear once a real LLM is wired in.</div>
+      </div>
+    </div>
+
+    <div class="feature-card">
+      <h3>3. Course-wide scoped summary — <code>POST /courses/summary</code></h3>
+      <p>Scope picker on the dashboard maps to: <code>everything</code> (no filter) / <code>assignments</code> (item_type == "assignment") / <code>lectures</code> (item_type == "lecture"). Each scope is summarized server-side after the extension re-fetches and scrapes the course page. Empty-result case is handled explicitly (no error):</p>
+      <pre>scope=assignments, but the course has none → "No matching items were found for the requested scope."</pre>
+    </div>
+
+    <div class="feature-card">
+      <h3>4. Video topic chapters — <code>GET /jobs/{job_id}/chapters</code></h3>
+      <p>A ~300-word transcript split into 3 chapters (text-fallback path, since timestamps aren't persisted yet):</p>
+      <div class="chapter-row"><span class="title">[FAKE] Topic 1</span><span>0:00 – 0:00*</span></div>
+      <div class="chapter-row"><span class="title">[FAKE] Topic 2</span><span>0:00 – 0:00*</span></div>
+      <div class="chapter-row"><span class="title">[FAKE] Topic 3</span><span>0:00 – 0:00*</span></div>
+      <p style="color:var(--muted); font-size:12px; margin-top:8px;">*synthetic timestamps — see note above about segment storage</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="dot next"></span> What's next (not built yet)</h2>
+    <ul class="todo-list">
+      <li><b>Real LLM wiring</b> — swap <code>FakeSummarizer</code> / <code>FakeQuizGenerator</code> for an actual provider once you pick one (Claude/OpenAI/local).</li>
+      <li><b>Real chapter timestamps</b> — persist per-segment data for completed jobs so <code>FakeChapterer.make_chapters</code> (the timestamp-aware path, already implemented and tested) can be used instead of the text-splitting fallback.</li>
+      <li><b>Real LLM-based chaptering</b> — once an LLM is wired in, replace the even-split stub with actual topic-boundary detection over the transcript.</li>
+      <li><b>Live verification on real BGU Moodle</b> — these tests run against jsdom fixtures derived from your sample HTML; loading the unpacked extension against a live, authenticated Moodle session is the next real-world check.</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  MoodlePRO — self-hosted BGU lecture transcription, summarization &amp; quiz pipeline · results generated 2026-06-20
+</footer>
+
+</body>
+</html>

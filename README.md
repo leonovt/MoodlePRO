@@ -32,6 +32,19 @@ shared/      Reference Pydantic schemas documenting the wire contracts between
 The worker only makes outbound connections (to Redis and to the server's HTTP API), so it
 can run on a home GPU machine behind NAT with no port-forwarding.
 
+## Quick look (no Docker/Postgres/Redis/ffmpeg needed)
+
+```bash
+cd server && pip install -r requirements-dev.txt
+cd ../gpu_worker && pip install -r requirements-dev.txt
+cd .. && python demo.py 18   # 18 = simulated video length in seconds
+```
+
+Runs the real FastAPI app + real worker code in-process (SQLite + fakeredis instead of
+the real services, same trick the test suites use — see `demo.py`), with the video
+download/ffmpeg steps stubbed. Prints the job lifecycle and the stub SRT, which loops
+its 3 canned Hebrew lines and clips the last segment to match the audio length exactly.
+
 ## Run locally
 
 ```bash

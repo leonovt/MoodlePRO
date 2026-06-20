@@ -43,3 +43,58 @@ class JobCompletePayload(BaseModel):
     text: str
     srt: str
     language: str = "he"
+
+
+class SummaryRequest(BaseModel):
+    title: str
+    text: str
+    item_type: str = "other"
+    mode: str = "casual"
+
+
+class SummaryResponse(BaseModel):
+    summary: str
+
+
+class QuizQuestion(BaseModel):
+    question: str
+    options: list[str]
+    correct_index: int
+    explanation: str
+
+
+class QuizRequest(BaseModel):
+    title: str
+    text: str
+    item_type: str = "other"
+    num_questions: int = 3
+
+
+class QuizResponse(BaseModel):
+    questions: list[QuizQuestion]
+
+
+class CourseSummaryScope(str, Enum):
+    everything = "everything"
+    assignments = "assignments"
+    lectures = "lectures"
+    slides = "slides"
+
+
+class CourseItem(BaseModel):
+    id: str
+    item_type: str
+    title: str
+    text: str
+
+
+class CourseSummaryRequest(BaseModel):
+    scope: CourseSummaryScope
+    items: list[CourseItem]
+
+
+class ChapterResponse(BaseModel):
+    id: int
+    title: str
+    start: float
+    end: float

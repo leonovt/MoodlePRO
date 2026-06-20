@@ -3,20 +3,32 @@
  * with a direct, unencrypted MP4 `<source>` — no DRM, no captions.
  */
 export function findMoodleVideoId(doc) {
-  const link = doc.querySelector('a[href*="thumb.php?id="], [data-video-id]');
-  if (!link) return null;
-  if (link.hasAttribute("data-video-id")) {
-    return link.getAttribute("data-video-id");
+  const el = doc.querySelector(
+    'a[href*="thumb.php?id="], [data-video-id], video[poster*="thumb.php?id="]'
+  );
+  if (!el) return null;
+  if (el.hasAttribute("data-video-id")) {
+    return el.getAttribute("data-video-id");
   }
-  const match = link.getAttribute("href").match(/id=(\d+)/);
+  const url = el.hasAttribute("poster") ? el.getAttribute("poster") : el.getAttribute("href");
+  const match = url.match(/id=(\d+)/);
   return match ? match[1] : null;
 }
 
+function findMp4Src(video) {
+  const directSrc = video.getAttribute("src");
+  if (directSrc) return directSrc;
+  const source = video.querySelector("source[src]");
+  return source ? source.getAttribute("src") : null;
+}
+
 export function findBguVideoPlayer(doc) {
-  const video = doc.querySelector("video.vjs-tech[src]");
+  // video.js sets `vjs-tech`/`src` directly on the <video> once it initializes;
+  // before that (or if init is deferred) the mp4 lives on a nested <source> instead.
+  const video = doc.querySelector('video.vjs-tech[src], video[class*="video-js"], video');
   if (!video) return null;
 
-  const src = video.getAttribute("src");
+  const src = findMp4Src(video);
   if (!src || !src.toLowerCase().includes(".mp4")) return null;
 
   return {
