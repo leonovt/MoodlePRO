@@ -14,7 +14,8 @@ server/      FastAPI — orchestration: download, ffmpeg extraction, SHA-256 ded
              future lecture/assignment summarization.
 gpu_worker/  Python worker — pops jobs from Redis, transcribes, streams segments,
              reports completion. Runs FAKE_TRANSCRIBE=true (canned output) until a
-             real GPU + the ivrit-ai model are wired up.
+             real GPU + the ivrit-ai model are wired up. Primary GPU target is the
+             BGU SLURM cluster (persistent 7-day job); Groq is the cloud fallback.
 shared/      Reference Pydantic schemas documenting the wire contracts between
              server/ and gpu_worker/ (each has its own copy; this is not imported).
 ```
@@ -23,7 +24,7 @@ shared/      Reference Pydantic schemas documenting the wire contracts between
 
 1. Content script detects the BGU video.js MP4 player, grabs the direct video URL + numeric Moodle video id.
 2. `POST /jobs` → server downloads the video, extracts 16kHz mono audio with ffmpeg, hashes it (SHA-256).
-3. Hash hit in Postgres → return the cached transcript immediately. Miss → queue the job in Redis, respond with a `job_id`.
+3. Hash hit in Postgres → return the cached transcript immediately. Miss → queue the job in Redis, respond with a `job_id`. A live GPU worker advertises itself via a Redis heartbeat key: if one is present the server waits up to `GROQ_FALLBACK_GRACE_SECONDS` for it to finish, otherwise (no heartbeat) it falls back to Groq (`whisper-large-v3`) immediately. The Groq result is persisted through the same cache (the whole fallback is a no-op when `GROQ_API_KEY` is unset).
 4. Client opens `WS /ws/jobs/{job_id}`.
 5. GPU worker pops the job, pulls the audio over HTTP (`GET /internal/audio/{id}`, bearer token), transcribes, and publishes each segment to Redis pub/sub as it's produced — the server relays these straight to the websocket.
 6. Worker posts the finished transcript (`POST /internal/jobs/{id}/complete`) — server persists it (keyed by audio hash, reused forever) and pushes a final `completed` event.
@@ -64,6 +65,13 @@ cd extension
 npm install && npm run build
 # chrome://extensions -> Developer mode -> Load unpacked -> extension/
 ```
+
+## Deploy (production)
+
+`deploy/` holds the always-on stack for the Oracle Cloud Always-Free VM — Postgres + Redis
++ server behind a Caddy HTTPS proxy (`docker compose up -d --build`). It's the host the
+cluster GPU worker and the extension connect to. See `deploy/README.md` for VM
+provisioning, DNS, firewall, and how the cluster worker connects back.
 
 ## Test
 

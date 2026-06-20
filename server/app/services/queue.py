@@ -5,9 +5,17 @@ from redis.asyncio import Redis
 
 JOB_QUEUE_KEY = "queue:jobs"
 
+# A GPU worker SETEXs this key on a short TTL while alive. Its presence is the
+# server's signal that a worker (cluster or otherwise) is around to claim jobs.
+WORKER_HEARTBEAT_KEY = "worker:heartbeat"
+
 
 def segment_channel(job_id: str) -> str:
     return f"job:{job_id}:segments"
+
+
+async def worker_is_alive(redis: Redis) -> bool:
+    return bool(await redis.exists(WORKER_HEARTBEAT_KEY))
 
 
 async def enqueue_job(redis: Redis, job_id: str) -> None:

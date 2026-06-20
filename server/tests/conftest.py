@@ -20,6 +20,7 @@ from app import main as app_main  # noqa: E402
 from app.api import internal as api_internal  # noqa: E402
 from app.api import jobs as api_jobs  # noqa: E402
 from app.main import app  # noqa: E402
+from app.services import fallback as svc_fallback  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -32,6 +33,7 @@ def patch_redis(monkeypatch):
     monkeypatch.setattr(api_jobs, "Redis", fakeredis_aio.FakeRedis)
     monkeypatch.setattr(api_internal, "Redis", fakeredis_aio.FakeRedis)
     monkeypatch.setattr(app_main, "Redis", fakeredis_aio.FakeRedis)
+    monkeypatch.setattr(svc_fallback, "Redis", fakeredis_aio.FakeRedis)
 
 
 @pytest_asyncio.fixture

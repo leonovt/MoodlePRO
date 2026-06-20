@@ -37,10 +37,11 @@ class Job(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_new_id)
     video_url: Mapped[str] = mapped_column(Text)
     moodle_video_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    # Dedup lookup key into Transcript.audio_hash, not a hard FK: a job gets its
-    # hash as soon as audio extraction finishes, before a matching transcript
-    # necessarily exists (it's only created once the worker completes the job).
-    audio_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Dedup lookup key into Transcript.audio_hash, NOT a hard FK: a job records its
+    # hash as soon as audio extraction finishes, before a matching transcript exists,
+    # so a real FK would (and did) violate on insert. Indexed because _to_response /
+    # dedup look transcripts up by it.
+    audio_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(32), default="pending")
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

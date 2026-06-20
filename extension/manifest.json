@@ -6,6 +6,7 @@
   "permissions": ["downloads"],
   "host_permissions": [
     "https://moodle.bgu.ac.il/*",
+    "https://151.145.95.59.sslip.io/*",
     "http://localhost:8000/*"
   ],
   "background": {

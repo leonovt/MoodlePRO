@@ -4,10 +4,16 @@ from redis.exceptions import TimeoutError as RedisTimeoutError
 from redis.asyncio import Redis
 
 JOB_QUEUE_KEY = "queue:jobs"
+WORKER_HEARTBEAT_KEY = "worker:heartbeat"
 
 
 def segment_channel(job_id: str) -> str:
     return f"job:{job_id}:segments"
+
+
+async def publish_heartbeat(redis: Redis, ttl_seconds: int) -> None:
+    """Refresh the worker liveness key on a TTL so the server knows a worker is alive."""
+    await redis.set(WORKER_HEARTBEAT_KEY, "1", ex=ttl_seconds)
 
 
 async def dequeue_job(redis: Redis, timeout: int = 5) -> str | None:

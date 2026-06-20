@@ -1,0 +1,5 @@
+# Caddy automatically provisions and renews a Let's Encrypt certificate for $DOMAIN.
+# reverse_proxy transparently upgrades the /ws/jobs/* WebSocket connections too.
+{$DOMAIN} {
+	reverse_proxy server:8000
+}

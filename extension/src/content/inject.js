@@ -11,7 +11,9 @@ import { backfillCompletedJob, fallbackForMissedSegments } from "./segment-fallb
 import { createSidebar } from "./sidebar.js";
 import { createVideoToolbar } from "./video-toolbar.js";
 
-const DEFAULT_SERVER_BASE_URL = "http://localhost:8000";
+// Production MoodlePRO server (Oracle VM, HTTPS via Caddy). For local dev, override by
+// passing a serverBaseUrl to main(), or temporarily point this at http://localhost:8000.
+const DEFAULT_SERVER_BASE_URL = "https://151.145.95.59.sslip.io";
 
 function addDownloadButton(doc, toolbar, api, jobId) {
   toolbar.addButton("Download", () => {

@@ -1,0 +1,91 @@
+# MoodlePRO production stack for the Oracle Cloud Always-Free VM.
+# Postgres + Redis + the FastAPI server behind a Caddy HTTPS reverse proxy.
+# Provisioning, DNS and firewall steps: see deploy/README.md
+#
+#   cp .env.example .env   # fill in secrets + DOMAIN
+#   docker compose up -d --build
+
+name: moodlepro
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # No published ports: reachable only by the server over the internal network.
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    ports:
+      # EXPOSED so the cluster GPU worker can reach it. This is the ONLY internet-facing
+      # data port — lock it to the cluster's egress IP in BOTH the OCI security list and
+      # the host firewall (see README). Password (requirepass) is required regardless.
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build:
+      context: ../server
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
+      STORAGE_DIR: /data
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
+      CLUSTER_ENABLED: ${CLUSTER_ENABLED:-true}
+      FALLBACK_PROVIDER: ${FALLBACK_PROVIDER:-groq}
+      IVRIT_ENDPOINT_URL: ${IVRIT_ENDPOINT_URL:-}
+      IVRIT_API_TOKEN: ${IVRIT_API_TOKEN:-}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      GROQ_MODEL: ${GROQ_MODEL:-whisper-large-v3}
+      GROQ_FALLBACK_GRACE_SECONDS: ${GROQ_FALLBACK_GRACE_SECONDS:-90}
+    volumes:
+      - serverdata:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "8000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - "80:80"      # required for the Let's Encrypt HTTP challenge
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on:
+      - server
+
+volumes:
+  pgdata:
+  redisdata:
+  serverdata:
+  caddydata:
+  caddyconfig:
