@@ -33,7 +33,13 @@ class QuizGenerator(ABC):
 
     @abstractmethod
     async def generate_quiz(
-        self, text: str, num_questions: int = 3, *, file_base64: str | None = None, mime_type: str | None = None
+        self,
+        text: str,
+        num_questions: int = 3,
+        difficulty: str = "medium",
+        *,
+        file_base64: str | None = None,
+        mime_type: str | None = None,
     ) -> list[dict]:
         ...
 
@@ -42,13 +48,19 @@ class FakeQuizGenerator(QuizGenerator):
     """Deterministic stub quiz generator; no LLM call, used in tests and when no API key is configured."""
 
     async def generate_quiz(
-        self, text: str, num_questions: int = 3, *, file_base64: str | None = None, mime_type: str | None = None
+        self,
+        text: str,
+        num_questions: int = 3,
+        difficulty: str = "medium",
+        *,
+        file_base64: str | None = None,
+        mime_type: str | None = None,
     ) -> list[dict]:
         questions = []
         for i in range(num_questions):
             questions.append(
                 {
-                    "question": f"[FAKE QUIZ] Stub question {i + 1} about the provided text?",
+                    "question": f"[FAKE QUIZ] Stub question {i + 1} ({difficulty}) about the provided text?",
                     "options": [
                         f"[FAKE] Option A for question {i + 1}",
                         f"[FAKE] Option B for question {i + 1}",
@@ -73,7 +85,13 @@ class GeminiQuizGenerator(QuizGenerator):
     """
 
     async def generate_quiz(
-        self, text: str, num_questions: int = 3, *, file_base64: str | None = None, mime_type: str | None = None
+        self,
+        text: str,
+        num_questions: int = 3,
+        difficulty: str = "medium",
+        *,
+        file_base64: str | None = None,
+        mime_type: str | None = None,
     ) -> list[dict]:
         parts = []
         if file_base64:
@@ -86,6 +104,10 @@ class GeminiQuizGenerator(QuizGenerator):
             config=types.GenerateContentConfig(
                 system_instruction=(
                     "You write multiple-choice quiz questions from university course material. "
+                    f"Set the difficulty level to: {difficulty}. "
+                    "Focus strictly on the concepts, facts, and details present in the provided material. "
+                    "Do NOT ask about external, general, or irrelevant facts that are not explicitly "
+                    "covered in the provided text. "
                     "Write questions, options, and explanations in the same language as the source text "
                     "(Hebrew source stays Hebrew). Each question must have exactly 4 options with exactly "
                     "one correct answer, plus a short explanation of why it's correct."

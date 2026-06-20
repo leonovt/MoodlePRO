@@ -81,7 +81,9 @@ async def quiz_course(request: CourseSummaryRequest) -> QuizResponse:
         return QuizResponse(questions=[])
 
     combined = "\n\n".join(f"## {item.title}\n{item.text}" for item in filtered)
-    questions = await get_quiz_generator().generate_quiz(combined)
+    questions = await get_quiz_generator().generate_quiz(
+        combined, num_questions=request.num_questions or 3, difficulty=request.difficulty or "medium"
+    )
     return QuizResponse(questions=[QuizQuestion(**q) for q in questions])
 
 

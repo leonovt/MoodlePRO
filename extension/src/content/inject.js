@@ -3,7 +3,7 @@ import { MSG } from "../shared/messages.js";
 import { attachChapters } from "./chapters.js";
 import { createCaptionOverlay } from "./caption-overlay.js";
 import { injectCourseItemButtons } from "./course-items.js";
-import { injectCourseToolbar } from "./course-toolbar.js";
+import { injectCoursePageToolbar } from "./course-toolbar.js";
 import { injectCourseDownloader } from "./course-downloader.js";
 import { findBguVideoPlayer } from "./detect-player.js";
 import { injectFeedbackButton } from "./feedback.js";
@@ -13,7 +13,7 @@ import { createVideoToolbar } from "./video-toolbar.js";
 
 // Production MoodlePRO server (Oracle VM, HTTPS via Caddy). For local dev, override by
 // passing a serverBaseUrl to main(), or temporarily point this at http://localhost:8000.
-const DEFAULT_SERVER_BASE_URL = "https://151.145.95.59.sslip.io";
+const DEFAULT_SERVER_BASE_URL = "http://localhost:8000";
 
 function addDownloadButton(doc, toolbar, api, jobId) {
   toolbar.addButton("Download", () => {
@@ -40,10 +40,7 @@ export async function main(doc = document, serverBaseUrl = DEFAULT_SERVER_BASE_U
     if (doc.querySelector('li[data-for="cmitem"]')) {
       injectCourseItemButtons(doc, serverBaseUrl);
       injectCourseDownloader(doc, serverBaseUrl);
-      return null;
-    }
-    if (doc.querySelector('[data-region="courses-view"]')) {
-      injectCourseToolbar(doc, serverBaseUrl);
+      injectCoursePageToolbar(doc, serverBaseUrl);
       return null;
     }
     return null;

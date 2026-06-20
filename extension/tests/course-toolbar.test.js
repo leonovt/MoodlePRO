@@ -1,40 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { injectCourseToolbar } from "../src/content/course-toolbar.js";
+import { injectCoursePageToolbar } from "../src/content/course-toolbar.js";
 
 function setupDom() {
   document.body.innerHTML = `
-    <div data-region="courses-view" data-display="card">
-      <div data-region="course-view-content">
-        <ul class="list-group unstyled" data-region="courses-list"></ul>
+    <header id="page-header" class="header-maxwidth d-print-none">
+      <div class="page-context-header d-flex flex-column">
+        <div class="page-header-headings"><h1>Computer Security</h1></div>
       </div>
-    </div>
+    </header>
+    <li class="activity activity-wrapper modtype_zoom" data-for="cmitem" data-id="1">
+      <div class="activity-name-area"><div class="activityname"><a href="viewvideo.php?id=123"><span class="instancename">Lecture 1: Intro</span></a></div></div>
+    </li>
+    <li class="activity activity-wrapper modtype_resource" data-for="cmitem" data-id="2">
+      <div class="activity-name-area"><div class="activityname"><a href="x.pdf"><span class="instancename">Slides 1: Cryptography</span></a></div></div>
+    </li>
+    <li class="activity activity-wrapper modtype_forum" data-for="cmitem" data-id="3">
+      <div class="activity-name-area"><div class="activityname"><a href="forum.php"><span class="instancename">News & Announcements Forum</span></a></div></div>
+    </li>
   `;
 }
 
-function addCourseLink(href, text = "My Course") {
-  const list = document.querySelector('[data-region="courses-list"]');
-  const li = document.createElement("li");
-  const a = document.createElement("a");
-  a.href = href;
-  a.textContent = text;
-  li.appendChild(a);
-  list.appendChild(li);
-  return a;
-}
-
-const COURSE_HTML = `
-  <html><body>
-    <li class="activity activity-wrapper resource modtype_resource   " data-for="cmitem" data-id="1">
-      <div class="activity-name-area"><div class="activityname"><a href="x"><span class="instancename">Item 1</span></a></div></div>
-    </li>
-  </body></html>
-`;
-
-function mockFetchForCoursePage(extraHandlers = {}) {
+function mockFetchForApi(extraHandlers = {}) {
   global.fetch.mockImplementation((url) => {
-    if (typeof url === "string" && url.includes("course/view.php")) {
-      return Promise.resolve({ ok: true, text: async () => COURSE_HTML });
-    }
     for (const [suffix, handler] of Object.entries(extraHandlers)) {
       if (typeof url === "string" && url.endsWith(suffix)) return handler();
     }
@@ -47,121 +34,90 @@ beforeEach(() => {
   global.fetch = vi.fn();
 });
 
-describe("injectCourseToolbar", () => {
-  it("does nothing when the courses-view container is not present", () => {
-    document.body.innerHTML = "<p>no courses here</p>";
-    expect(() => injectCourseToolbar(document, "http://localhost:8000")).not.toThrow();
+describe("injectCoursePageToolbar", () => {
+  it("does nothing when page-header is not present", () => {
+    document.body.innerHTML = "<p>no header here</p>";
+    expect(() => injectCoursePageToolbar(document, "http://localhost:8000")).not.toThrow();
   });
 
-  it("injects distinct Summary and Quiz buttons when a course link appears", async () => {
-    injectCourseToolbar(document, "http://localhost:8000");
-    addCourseLink("https://moodle.bgu.ac.il/moodle/course/view.php?id=43312");
-
-    await vi.waitFor(() => {
-      expect(document.querySelector('[data-moodlepro-ui="course-summarize"]')).not.toBeNull();
-      expect(document.querySelector('[data-moodlepro-ui="course-quiz"]')).not.toBeNull();
-    });
+  it("injects distinct Course Summary and Course Quiz buttons into the header", () => {
+    injectCoursePageToolbar(document, "http://localhost:8000");
+    const toolbar = document.querySelector('[data-moodlepro-ui="course-page-toolbar"]');
+    expect(toolbar).not.toBeNull();
+    expect(toolbar.textContent).toContain("Course Summary");
+    expect(toolbar.textContent).toContain("Course Quiz");
   });
 
-  it("does not duplicate the buttons if the mutation observer fires again for the same link", async () => {
-    injectCourseToolbar(document, "http://localhost:8000");
-    addCourseLink("https://moodle.bgu.ac.il/moodle/course/view.php?id=43312");
+  it("opens the selection popup, filters out the technical forum, and lists only the academic lecture/slides", () => {
+    injectCoursePageToolbar(document, "http://localhost:8000");
+    const summaryBtn = Array.from(document.querySelectorAll("button")).find(b => b.textContent.includes("Course Summary"));
+    summaryBtn.click();
 
-    await vi.waitFor(() => {
-      expect(document.querySelectorAll('[data-moodlepro-ui="course-summarize"]')).toHaveLength(1);
-      expect(document.querySelectorAll('[data-moodlepro-ui="course-quiz"]')).toHaveLength(1);
-    });
+    const menu = document.querySelector("#moodlepro-selection-menu");
+    expect(menu).not.toBeNull();
+
+    const labels = Array.from(menu.querySelectorAll("#moodlepro-lecture-list label span")).map(s => s.textContent.trim());
+    expect(labels).toEqual(["🎥 Lecture 1: Intro", "📄 Slides 1: Cryptography"]);
   });
 
-  it("offers all four scopes (everything/lectures/assignments/slides) from the Summary button", async () => {
-    mockFetchForCoursePage({ "/courses/summary": () => Promise.resolve({ ok: true, json: async () => ({ summary: "x" }) }) });
-    injectCourseToolbar(document, "http://localhost:8000");
-    addCourseLink("https://moodle.bgu.ac.il/moodle/course/view.php?id=43312");
-
-    const button = await vi.waitFor(() => {
-      const b = document.querySelector('[data-moodlepro-ui="course-summarize"]');
-      expect(b).not.toBeNull();
-      return b;
-    });
-    button.click();
-
-    await vi.waitFor(() => {
-      const labels = Array.from(document.querySelectorAll("#moodlepro-scope-menu button")).map((b) => b.textContent);
-      expect(labels).toEqual(["Everything", "Lectures only", "Assignments only", "Slides only"]);
-    });
-  });
-
-  it("fetches the course page, scrapes items with item_type, and posts to /courses/summary when a scope is chosen", async () => {
-    mockFetchForCoursePage({
-      "/courses/summary": () => Promise.resolve({ ok: true, json: async () => ({ summary: "course summary" }) }),
+  it("posts selected academic items to /courses/summary on Generate Summary click", async () => {
+    mockFetchForApi({
+      "/courses/summary": () => Promise.resolve({ ok: true, json: async () => ({ summary: "academic summary" }) })
     });
 
-    injectCourseToolbar(document, "http://localhost:8000");
-    const link = addCourseLink("https://moodle.bgu.ac.il/moodle/course/view.php?id=43312");
+    injectCoursePageToolbar(document, "http://localhost:8000");
+    const summaryBtn = Array.from(document.querySelectorAll("button")).find(b => b.textContent.includes("Course Summary"));
+    summaryBtn.click();
 
-    const summaryButton = await vi.waitFor(() => {
-      const b = document.querySelector('[data-moodlepro-ui="course-summarize"]');
-      expect(b).not.toBeNull();
-      return b;
-    });
-    summaryButton.click();
+    const menu = document.querySelector("#moodlepro-selection-menu");
+    expect(menu).not.toBeNull();
 
-    const everythingOption = await vi.waitFor(() => {
-      const menu = document.querySelector("#moodlepro-scope-menu");
-      expect(menu).not.toBeNull();
-      return Array.from(menu.querySelectorAll("button")).find((b) => b.textContent === "Everything");
-    });
-    everythingOption.click();
-
-    await vi.waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(link.href, expect.objectContaining({ credentials: "same-origin" }));
-    });
+    menu.querySelector("#moodlepro-generate-btn").click();
 
     await vi.waitFor(() => {
       const summaryCall = global.fetch.mock.calls.find(([url]) => typeof url === "string" && url.endsWith("/courses/summary"));
       expect(summaryCall).toBeDefined();
       const body = JSON.parse(summaryCall[1].body);
       expect(body.scope).toBe("everything");
-      expect(body.items).toEqual([expect.objectContaining({ id: "1", item_type: "slides", title: "Item 1" })]);
+      expect(body.items).toHaveLength(2);
+      expect(body.items[0].title).toBe("Lecture 1: Intro");
+      expect(body.items[1].title).toBe("Slides 1: Cryptography");
     });
 
     await vi.waitFor(() => {
-      expect(document.querySelector("#moodlepro-modal").textContent).toContain("course summary");
+      expect(document.querySelector("#moodlepro-modal").textContent).toContain("academic summary");
     });
   });
 
-  it("posts to /courses/quiz with the chosen scope when the Quiz button is used", async () => {
-    mockFetchForCoursePage({
-      "/courses/quiz": () =>
-        Promise.resolve({
-          ok: true,
-          json: async () => ({
-            questions: [{ question: "Q?", options: ["a", "b", "c", "d"], correct_index: 0, explanation: "e" }],
-          }),
-        }),
+  it("posts chosen length and difficulty along with selected items to /courses/quiz on Generate Quiz click", async () => {
+    mockFetchForApi({
+      "/courses/quiz": () => Promise.resolve({
+        ok: true,
+        json: async () => ({ questions: [{ question: "Q?", options: ["a", "b", "c", "d"], correct_index: 0, explanation: "e" }] })
+      })
     });
 
-    injectCourseToolbar(document, "http://localhost:8000");
-    addCourseLink("https://moodle.bgu.ac.il/moodle/course/view.php?id=43312");
+    injectCoursePageToolbar(document, "http://localhost:8000");
+    const quizBtn = Array.from(document.querySelectorAll("button")).find(b => b.textContent.includes("Course Quiz"));
+    quizBtn.click();
 
-    const quizButton = await vi.waitFor(() => {
-      const b = document.querySelector('[data-moodlepro-ui="course-quiz"]');
-      expect(b).not.toBeNull();
-      return b;
-    });
-    quizButton.click();
+    const menu = document.querySelector("#moodlepro-selection-menu");
+    expect(menu).not.toBeNull();
 
-    const slidesOption = await vi.waitFor(() => {
-      const menu = document.querySelector("#moodlepro-scope-menu");
-      expect(menu).not.toBeNull();
-      return Array.from(menu.querySelectorAll("button")).find((b) => b.textContent === "Slides only");
-    });
-    slidesOption.click();
+    const lengthSel = menu.querySelector("#moodlepro-length-select");
+    const hardSel = menu.querySelector("#moodlepro-hardness-select");
+    lengthSel.value = "10";
+    hardSel.value = "easy";
+
+    menu.querySelector("#moodlepro-generate-btn").click();
 
     await vi.waitFor(() => {
       const quizCall = global.fetch.mock.calls.find(([url]) => typeof url === "string" && url.endsWith("/courses/quiz"));
       expect(quizCall).toBeDefined();
-      expect(JSON.parse(quizCall[1].body).scope).toBe("slides");
+      const body = JSON.parse(quizCall[1].body);
+      expect(body.num_questions).toBe(10);
+      expect(body.difficulty).toBe("easy");
+      expect(body.items).toHaveLength(2);
     });
 
     await vi.waitFor(() => {

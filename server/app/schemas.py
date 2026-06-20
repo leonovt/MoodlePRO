@@ -95,6 +95,8 @@ class CourseItem(BaseModel):
 class CourseSummaryRequest(BaseModel):
     scope: CourseSummaryScope
     items: list[CourseItem]
+    num_questions: Optional[int] = 3
+    difficulty: Optional[str] = "medium"
 
 
 class ChapterResponse(BaseModel):
