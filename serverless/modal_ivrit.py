@@ -49,9 +49,11 @@ def web():
 
     # Loads the ct2 model from Hugging Face on first cold start, then it's cached.
     model = WhisperModel(MODEL_ID, device="cuda", compute_type="float16")
-    api = FastAPI()
+    # redirect_slashes off + an explicit path: posting to the bare root made Modal's proxy
+    # issue a slash redirect it then rejects ("bad redirect method"). /transcribe is exact.
+    api = FastAPI(redirect_slashes=False)
 
-    @api.post("/")
+    @api.post("/transcribe")
     async def transcribe(
         file: UploadFile = File(...),
         language: str = Form("he"),
