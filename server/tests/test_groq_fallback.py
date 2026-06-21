@@ -179,6 +179,57 @@ async def test_fallback_marks_job_failed_on_error(client, monkeypatch):
     assert "groq exploded" in status.json()["error"]
 
 
+async def test_fallback_error_ignored_when_transcript_already_exists(client, monkeypatch):
+    """If a worker's transcript appears while Groq is running, a later Groq error must NOT
+    mark the (effectively successful) job as failed or push a failure to the client."""
+    monkeypatch.setattr(audio_extract, "hash_audio", lambda path: "hash-race")
+    monkeypatch.setattr(settings, "groq_api_key", "test-key")
+    monkeypatch.setattr(settings, "groq_fallback_grace_seconds", 0.0)
+
+    class BoomAfterClusterWon(TranscriptionProvider):
+        async def transcribe(self, audio_path: Path, language: str) -> TranscriptionResult:
+            # The cluster worker wins the race mid-Groq-attempt...
+            async with SessionLocal() as session:
+                await dedup.save_transcript(session, "hash-race", "cluster won", "srt", "he")
+                await session.commit()
+            raise RuntimeError("groq exploded after cluster won")  # ...then Groq errors
+
+    monkeypatch.setattr(fallback, "GroqTranscriber", lambda: BoomAfterClusterWon())
+
+    resp = await client.post("/jobs", json={"video_url": "https://example.com/race.mp4"})
+    job_id = resp.json()["id"]
+
+    status = resp.json()
+    for _ in range(50):
+        await asyncio.sleep(0.02)
+        status = (await client.get(f"/jobs/{job_id}")).json()
+        if status["status"] != "queued":
+            break
+
+    assert status["status"] != "failed"
+    assert status["error"] is None
+
+
+async def test_complete_clears_stale_error_from_lost_fallback(client, internal_headers, monkeypatch):
+    """A successful cluster completion must clear an error a racing fallback left behind."""
+    monkeypatch.setattr(audio_extract, "hash_audio", lambda path: "hash-stale-err")
+    resp = await client.post("/jobs", json={"video_url": "https://example.com/se.mp4"})
+    job_id = resp.json()["id"]
+
+    await fallback._mark_job_failed(job_id, "groq fallback failed: boom")
+    failed = (await client.get(f"/jobs/{job_id}")).json()
+    assert failed["status"] == "failed" and failed["error"]
+
+    await client.post(
+        f"/internal/jobs/{job_id}/complete",
+        json={"text": "hebrew text", "srt": "srt", "language": "he"},
+        headers=internal_headers,
+    )
+    done = (await client.get(f"/jobs/{job_id}")).json()
+    assert done["status"] == "completed"
+    assert done["error"] is None
+
+
 async def test_worker_will_handle_false_when_cluster_disabled(monkeypatch):
     """Kill switch: even with a live worker heartbeat, a disabled cluster goes to Groq."""
     monkeypatch.setattr(settings, "cluster_enabled", False)
