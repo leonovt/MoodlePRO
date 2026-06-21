@@ -42,7 +42,50 @@ function connectJobSocket(api, jobId, onEvent) {
   return socket;
 }
 
+function installFetchProxy(serverBaseUrl) {
+  // Only in a real loaded extension (chrome.runtime.id is set). Under vitest the
+  // page's window.fetch is a mock we must not monkeypatch, or every test hangs.
+  if (typeof chrome === "undefined" || !chrome.runtime || !chrome.runtime.id) return;
+
+  const originalFetch = window.fetch;
+  const base = serverBaseUrl.replace(/\/$/, "");
+  console.log("🚀 MoodlePRO: Fetch proxy installed for", base);
+  
+  window.fetch = async function (url, options) {
+    const urlStr = typeof url === "string" ? url : url instanceof Request ? url.url : url.toString();
+    if (urlStr.startsWith(base)) {
+      console.log("🚀 MoodlePRO: Intercepted fetch to", urlStr);
+      return new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(
+          { type: "PROXY_FETCH_RAW", url: urlStr, options },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              console.error("Fetch Proxy Error (IPC):", chrome.runtime.lastError);
+              return reject(new TypeError("Failed to fetch (Proxy IPC error)"));
+            }
+            if (response.error) {
+              console.error("Fetch Proxy Error (Network):", response.error);
+              return reject(new TypeError(`Failed to fetch (Proxy Network error): ${response.error}`));
+            }
+            resolve({
+              ok: response.status >= 200 && response.status < 300,
+              status: response.status,
+              json: async () => response.data,
+              text: async () => response.text,
+              headers: new Headers(response.headers || {}),
+            });
+          }
+        );
+      });
+    }
+    return originalFetch.apply(this, arguments);
+  };
+}
+
 export async function main(doc = document, serverBaseUrl = DEFAULT_SERVER_BASE_URL) {
+  if (typeof window !== "undefined") {
+    installFetchProxy(serverBaseUrl);
+  }
   injectFeedbackButton(doc);
 
   const player = findBguVideoPlayer(doc);
