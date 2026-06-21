@@ -19,6 +19,12 @@
       "run_at": "document_idle"
     }
   ],
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/logo.png"],
+      "matches": ["https://moodle.bgu.ac.il/*"]
+    }
+  ],
   "icons": {
     "128": "icons/icon128.png"
   }

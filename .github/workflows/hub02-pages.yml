@@ -84,6 +84,20 @@ jobs:
             echo "dir=." >> $GITHUB_OUTPUT
           fi
 
+      - name: Build and package extension zip
+        run: |
+          cd extension
+          npm ci
+          npm run build
+          cd ..
+          rm -rf /tmp/moodlepro-extension
+          mkdir -p /tmp/moodlepro-extension
+          cp extension/manifest.json /tmp/moodlepro-extension/
+          cp -r extension/dist /tmp/moodlepro-extension/
+          cp -r extension/icons /tmp/moodlepro-extension/
+          DEPLOY_DIR="$GITHUB_WORKSPACE/${{ steps.detect.outputs.dir }}"
+          (cd /tmp/moodlepro-extension && zip -r "$DEPLOY_DIR/moodlepro-extension.zip" .)
+
       # ---------- Ensure Cloudflare Pages project exists (Wrangler first, REST fallback, then verify) ----------
       - name: Ensure jq is present (diagnostic helper)
         run: |
