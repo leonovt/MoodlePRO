@@ -1,0 +1,161 @@
+name: Hub02 Pages Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  # The worker sets this repo variable to the slug (e.g., "winner").
+  # Fallback only for safety during tests.
+  CF_PAGES_PROJECT: ${{ vars.CF_PAGES_PROJECT || 'test' }}
+  # Hub02 finalize endpoint and job ID
+  HUB02_PUBLISH_JOB_ID: "f959fe40-4f74-4a9c-8742-7d5f0e7f417a"
+  HUB02_PUBLISH_FINALIZE_URL: "https://ddeubhasvmeqwtzgkunt.supabase.co/functions/v1/publish-worker"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect package.json
+        id: haspkg
+        run: |
+          if [ -f package.json ]; then
+            echo "present=true" >> $GITHUB_OUTPUT
+          else
+            echo "present=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Node
+        if: steps.haspkg.outputs.present == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install deps (if package.json present)
+        if: steps.haspkg.outputs.present == 'true'
+        run: |
+          npm ci || npm i
+
+      - name: Ensure jose is available if referenced
+        if: steps.haspkg.outputs.present == 'true'
+        shell: bash
+        run: |
+          NEEDS_JOSE="false"
+          if grep -R "from 'jose'" -n . 2>/dev/null || grep -R 'from "jose"' -n . 2>/dev/null; then
+            NEEDS_JOSE="true"
+          fi
+          if [ "$NEEDS_JOSE" = "true" ]; then
+            if ! node -e "const p=require('./package.json'); process.exit(p.dependencies && (p.dependencies.jose || (p.devDependencies && p.devDependencies.jose)) ? 0 : 1)" 2>/dev/null; then
+              echo "Installing jose (not declared in package.json)…"
+              npm i -D jose
+            else
+              echo "jose already declared, skipping."
+            fi
+          else
+            echo "No jose imports found, skipping."
+          fi
+
+      - name: Detect build script
+        id: buildscript
+        if: steps.haspkg.outputs.present == 'true'
+        run: |
+          if node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.build ? 0 : 1)"; then
+            echo "has=true" >> $GITHUB_OUTPUT
+          else
+            echo "has=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build
+        id: build
+        if: steps.buildscript.outputs.has == 'true'
+        run: npm run build
+
+      - name: Detect build output
+        id: detect
+        run: |
+          if [ -d "dist" ]; then
+            echo "dir=dist" >> $GITHUB_OUTPUT
+          else
+            echo "dir=." >> $GITHUB_OUTPUT
+          fi
+
+      # ---------- Ensure Cloudflare Pages project exists (Wrangler first, REST fallback, then verify) ----------
+      - name: Ensure jq is present (diagnostic helper)
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+
+      - name: Ensure Cloudflare Pages project exists (idempotent)
+        env:
+          # ✅ Wrangler expects exactly these names
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          PROJ: ${{ env.CF_PAGES_PROJECT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Ensuring CF Pages project: $PROJ (acct: $CLOUDFLARE_ACCOUNT_ID)"
+
+          # Try Wrangler first (non-fatal if it says "already exists" or fails)
+          if ! npx --yes wrangler@4 pages project create "$PROJ" --production-branch=main; then
+            echo "Wrangler create failed; attempting REST fallback…"
+            body=$(jq -n --arg name "$PROJ" --arg branch "main" \
+              '{ name:$name, production_branch:$branch, source:{ type:"direct_upload" } }')
+
+            curl -sS -X POST \
+              -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+              -H "Content-Type: application/json" \
+              --data "$body" \
+              "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects" \
+              || true
+          fi
+
+          # Verify (hard fail if still missing)
+          verify=$(curl -sS \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${PROJ}" \
+            || true)
+
+          echo "$verify" | jq -e '.success == true' >/dev/null || {
+            echo "❌ Pages project '${PROJ}' not confirmed"; echo "$verify" | head -c 600; exit 1;
+          }
+          echo "✅ Pages project '${PROJ}' is present."
+
+      # ---------- Deploy (only after verified present) ----------
+      - name: Deploy with Wrangler
+        id: deploy
+        run: |
+          npx --yes wrangler@4 pages deploy "${{ steps.detect.outputs.dir }}" \
+            --project-name "${{ env.CF_PAGES_PROJECT }}" \
+            --commit-dirty=true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+
+      # ---------- Notify Hub02 to finalize domain + DNS ----------
+      - name: Notify Hub02 finalize
+        if: ${{ success() }}
+        run: |
+          curl -X POST "$HUB02_PUBLISH_FINALIZE_URL" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.HUB02_SERVICE_ROLE_KEY }}" \
+            -d "{\"job_id\":\"${HUB02_PUBLISH_JOB_ID}\",\"finalize\":true,\"secret\":\"${HUB02_PWF_SECRET}\"}"
+        env:
+          HUB02_PWF_SECRET: "e1e8dd5b8dd640f2537b4dbf4b8aa4dbe6f14cf5f4f8c9fdd75ddc7e90f46b52"
+
+      # ---------- Notify Hub02 of build/deploy failure ----------
+      - name: Notify Hub02 failure
+        if: ${{ failure() }}
+        run: |
+          REASON="build"
+          if [ "${{ steps.deploy.outcome }}" = "failure" ]; then REASON="deploy"; fi
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -X POST "$HUB02_PUBLISH_FINALIZE_URL" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.HUB02_SERVICE_ROLE_KEY }}" \
+            -d "{\"job_id\":\"${HUB02_PUBLISH_JOB_ID}\",\"failed\":true,\"failure_reason\":\"${REASON}\",\"run_url\":\"${RUN_URL}\"}"
