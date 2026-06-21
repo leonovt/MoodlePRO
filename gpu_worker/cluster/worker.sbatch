@@ -44,7 +44,7 @@ export FAKE_TRANSCRIBE=false
 export MODEL_NAME="${MODEL_NAME:-ivrit-ai/whisper-large-v3-turbo-ct2}"
 export DEVICE=cuda
 export COMPUTE_TYPE="${COMPUTE_TYPE:-float16}"
-export LANGUAGE="${LANGUAGE:-he}"
+export LANGUAGE="${LANGUAGE:-auto}"          ### autodetect per lecture; pin to he/en to force
 export HEARTBEAT_INTERVAL_SECONDS="${HEARTBEAT_INTERVAL_SECONDS:-10}"
 export HEARTBEAT_TTL_SECONDS="${HEARTBEAT_TTL_SECONDS:-30}"
 ### Cache the HF model download under home (shared storage) so nodes don't re-download.

@@ -76,11 +76,16 @@ async def fetch_audio(http_client: httpx.AsyncClient, settings: WorkerSettings, 
 
 
 async def post_complete(
-    http_client: httpx.AsyncClient, settings: WorkerSettings, job_id: str, text: str, srt: str
+    http_client: httpx.AsyncClient,
+    settings: WorkerSettings,
+    job_id: str,
+    text: str,
+    srt: str,
+    language: str | None = None,
 ) -> None:
     response = await http_client.post(
         f"/internal/jobs/{job_id}/complete",
-        json={"text": text, "srt": srt, "language": settings.language},
+        json={"text": text, "srt": srt, "language": language or settings.language},
         headers=_auth_headers(settings),
     )
     response.raise_for_status()
