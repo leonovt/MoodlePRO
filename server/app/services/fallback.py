@@ -125,6 +125,16 @@ async def _fallback_task(job_id: str, audio_hash: str, language: str) -> None:
                 session, redis, job_id, audio_hash, audio_path, provider, language
             )
     except Exception as exc:  # noqa: BLE001 - background task; surface to the client, don't crash
+        # A transcript may have appeared meanwhile (a cluster worker won the race). If so,
+        # the fallback's error is moot — don't mark the job failed or push a "failed" event,
+        # which would show the user an error on a job that actually succeeded.
+        async with SessionLocal() as session:
+            if await dedup.find_transcript(session, audio_hash) is not None:
+                logger.info(
+                    "groq fallback for job %s errored, but a transcript already exists; ignoring",
+                    job_id,
+                )
+                return
         logger.exception("groq fallback failed for job %s", job_id)
         await _mark_job_failed(job_id, f"groq fallback failed: {exc}")
         try:

@@ -48,7 +48,13 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     groq_model: str = "whisper-large-v3"
     groq_base_url: str = "https://api.groq.com/openai/v1"
-    groq_fallback_grace_seconds: float = 90.0
+    # How long to wait for an ALIVE cluster worker to finish before also running Groq. A
+    # long lecture can take several minutes on the cluster, and 90s fired Groq redundantly
+    # almost every time (wasted quota + a racing job that could clobber the cluster's
+    # result). Worker *death* is caught separately in ~30s via the heartbeat key expiring,
+    # so a generous grace only delays Groq when a worker is alive but slow — when we DO
+    # want to keep waiting for it.
+    groq_fallback_grace_seconds: float = 300.0
     groq_fallback_poll_seconds: float = 2.0
     # Groq rejects uploads over ~25 MB (a 2h lecture as 16kHz WAV is ~230 MB). Files
     # larger than this are split into <= groq_chunk_seconds pieces, transcribed
