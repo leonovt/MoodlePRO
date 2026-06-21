@@ -6,10 +6,30 @@ beforeEach(() => {
 });
 
 describe("getMoodleUserId", () => {
-  it("reads the numeric user id from a profile link", () => {
+  it("reads the numeric user id from the user-menu profile link", () => {
     document.body.innerHTML = `
-      <a href="https://moodle.bgu.ac.il/moodle/user/profile.php?id=12345">My profile</a>`;
+      <div data-region="user-menu">
+        <a href="https://moodle.bgu.ac.il/moodle/user/profile.php?id=12345">My profile</a>
+      </div>`;
     expect(getMoodleUserId(document)).toBe("moodle:12345");
+  });
+
+  it("ignores other people's profile links and uses the user menu's own id", () => {
+    // Course pages are full of OTHER users' profile links (teachers, forum authors).
+    // The id must come from the logged-in user's menu, not the first link on the page.
+    document.body.innerHTML = `
+      <a href="/moodle/user/profile.php?id=99999">Prof. Someone</a>
+      <a href="/moodle/user/profile.php?id=88888">Another student</a>
+      <div class="usermenu">
+        <a href="/moodle/user/profile.php?id=102494">My profile</a>
+      </div>`;
+    expect(getMoodleUserId(document)).toBe("moodle:102494");
+  });
+
+  it("does not pick up a stray profile link outside the user menu", () => {
+    document.body.innerHTML = `
+      <a href="/moodle/user/profile.php?id=99999">Prof. Someone</a>`;
+    expect(getMoodleUserId(document)).toBeNull();
   });
 
   it("falls back to the user-menu name when no profile link exists", () => {
