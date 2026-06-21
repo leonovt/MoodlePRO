@@ -67,9 +67,19 @@ async def post_segments_batch(
     response.raise_for_status()
 
 
-async def fetch_audio(http_client: httpx.AsyncClient, settings: WorkerSettings, job_id: str, dest_path: Path) -> Path:
+async def fetch_audio(
+    http_client: httpx.AsyncClient,
+    settings: WorkerSettings,
+    job_id: str,
+    dest_path: Path,
+    audio_format: str = "wav",
+) -> Path:
     dest_path.parent.mkdir(parents=True, exist_ok=True)
-    response = await http_client.get(f"/internal/audio/{job_id}", headers=_auth_headers(settings))
+    response = await http_client.get(
+        f"/internal/audio/{job_id}",
+        params={"format": audio_format},
+        headers=_auth_headers(settings),
+    )
     response.raise_for_status()
     dest_path.write_bytes(response.content)
     return dest_path

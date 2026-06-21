@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from redis.asyncio import Redis
@@ -7,7 +9,7 @@ from app.core.config import settings
 from app.core.security import require_internal_token
 from app.db.session import get_session
 from app.schemas import JobCompletePayload, WorkerSegment, WorkerSegmentBatch
-from app.services import dedup, storage
+from app.services import audio_extract, dedup, storage
 from app.services.jobs import get_job_or_404
 from app.services.queue import (
     dequeue_job,
@@ -64,11 +66,20 @@ async def publish_job_segments(
 
 
 @router.get("/audio/{job_id}")
-async def get_audio(job_id: str) -> FileResponse:
-    path = storage.audio_path(job_id)
-    if not path.exists():
+async def get_audio(job_id: str, format: str = "wav") -> FileResponse:
+    """Serve the job's audio to the GPU worker. format=opus returns a compressed copy
+    (~13x smaller) so the transfer of a long lecture isn't the bottleneck; the WAV stays
+    canonical for the dedup hash and the Groq path. The Opus copy is transcoded once on
+    first request and reused."""
+    wav = storage.audio_path(job_id)
+    if not wav.exists():
         raise HTTPException(status_code=404, detail="Audio not found for job")
-    return FileResponse(path, media_type="audio/wav")
+    if format == "opus":
+        opus = storage.audio_opus_path(job_id)
+        if not opus.exists():
+            await asyncio.to_thread(audio_extract.compress_to_opus, wav, opus)
+        return FileResponse(opus, media_type="audio/ogg")
+    return FileResponse(wav, media_type="audio/wav")
 
 
 @router.post("/jobs/{job_id}/complete")
