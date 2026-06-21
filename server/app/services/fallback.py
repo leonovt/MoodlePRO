@@ -77,6 +77,7 @@ async def run_groq_fallback(
     await session.commit()
 
     await publish_completed(redis, job_id, result.text)
+    storage.cleanup_job(job_id)  # transcript persisted → drop the video/WAV to free disk
     logger.info("job %s completed via Groq fallback", job_id)
     return True
 

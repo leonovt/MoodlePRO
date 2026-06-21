@@ -98,6 +98,7 @@ async def create_job(
         job.status = JobStatus.failed
         job.error = str(exc)
         await session.commit()
+        storage.cleanup_job(job.id)  # drop any partial download so failures don't leak disk
         return await _to_response(session, job)
 
     if request.moodle_video_id:

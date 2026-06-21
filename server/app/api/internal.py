@@ -100,6 +100,7 @@ async def complete_job(
     await session.commit()
 
     await publish_completed(redis, job_id, payload.text)
+    storage.cleanup_job(job_id)  # transcript persisted → drop the video/WAV to free disk
     return {"status": "completed"}
 
 
