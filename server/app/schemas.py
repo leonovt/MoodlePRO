@@ -69,6 +69,13 @@ class WorkerSegment(BaseModel):
     end: float
 
 
+class WorkerSegmentBatch(BaseModel):
+    """A batch of segments posted in one request. On a long lecture the worker produces
+    thousands of segments; sending them one-per-HTTPS-call made the GPU idle waiting on
+    each round-trip, so it batches them here to cut the round-trips ~batch-fold."""
+    segments: list[WorkerSegment]
+
+
 class SummaryRequest(BaseModel):
     title: str
     text: str

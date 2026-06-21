@@ -49,6 +49,24 @@ async def post_segment(
     response.raise_for_status()
 
 
+async def post_segments_batch(
+    http_client: httpx.AsyncClient,
+    settings: WorkerSettings,
+    job_id: str,
+    segments: list,
+) -> None:
+    """Post several segments in one request, so the GPU isn't stalled on a round-trip per
+    segment. `segments` is any sequence of objects with .text/.start/.end (Segment)."""
+    if not segments:
+        return
+    response = await http_client.post(
+        f"/internal/jobs/{job_id}/segments/batch",
+        json={"segments": [{"text": s.text, "start": s.start, "end": s.end} for s in segments]},
+        headers=_auth_headers(settings),
+    )
+    response.raise_for_status()
+
+
 async def fetch_audio(http_client: httpx.AsyncClient, settings: WorkerSettings, job_id: str, dest_path: Path) -> Path:
     dest_path.parent.mkdir(parents=True, exist_ok=True)
     response = await http_client.get(f"/internal/audio/{job_id}", headers=_auth_headers(settings))
