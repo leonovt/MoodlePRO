@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import PlainTextResponse
 from redis.asyncio import Redis
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -114,6 +115,24 @@ async def create_job(
         await enqueue_job(redis, job.id)
     schedule_groq_fallback(job.id, audio_hash, request.language)
     return await _to_response(session, job)
+
+
+@router.get("/jobs/recent")
+async def recent_jobs(limit: int = 10, session: AsyncSession = Depends(get_session)) -> list[dict]:
+    """The last N jobs with their routing provider — a quick window into who transcribed
+    what (cluster | groq | ivrit | cache) without grepping logs or psql. Defined before
+    /jobs/{job_id} so "recent" isn't matched as a job id."""
+    result = await session.execute(select(Job).order_by(Job.created_at.desc()).limit(limit))
+    return [
+        {
+            "id": job.id,
+            "status": job.status,
+            "provider": job.provider,
+            "error": job.error,
+            "created_at": job.created_at,
+        }
+        for job in result.scalars().all()
+    ]
 
 
 @router.get("/jobs/{job_id}", response_model=JobResponse)

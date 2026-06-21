@@ -38,9 +38,9 @@ export async function backfillCompletedJob(api, jobId, text, sidebar, overlay) {
  *
  * Real transcription takes seconds-to-minutes, so the window is generous (default ~10 min).
  */
-export async function fallbackForMissedSegments(api, jobId, sidebar, overlay, attempts = 300, delayMs = 2000) {
+export async function fallbackForMissedSegments(api, jobId, sidebar, overlay, attempts = 600, delayMs = 3000) {
   for (let i = 0; i < attempts; i++) {
-    if (sidebar.segments.length > 0) return; // the WebSocket delivered; nothing to do
+    if (sidebar.segments.length > 0) return "segments"; // the WebSocket delivered
     let job;
     try {
       job = await api.getJob(jobId);
@@ -51,9 +51,10 @@ export async function fallbackForMissedSegments(api, jobId, sidebar, overlay, at
       if (sidebar.segments.length === 0) {
         await backfillCompletedJob(api, jobId, job.text, sidebar, overlay);
       }
-      return;
+      return "completed";
     }
-    if (job && job.status === "failed") return;
+    if (job && job.status === "failed") return "failed";
     if (i < attempts - 1) await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
+  return "timeout"; // window elapsed without completion — leave the loading banner up
 }
