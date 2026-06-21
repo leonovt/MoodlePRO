@@ -62,7 +62,11 @@ async def test_worker_processes_a_real_job_end_to_end(fake_redis):
             queued_ids = [item.decode() for item in await fake_redis.lrange("queue:jobs", 0, -1)]
             assert job["id"] in queued_ids
 
-            worker_settings = WorkerSettings(internal_api_token="test-internal-token")
+            # audio_format="wav": the stubbed pipeline writes fake (non-audio) bytes, so the
+            # server can't ffmpeg-transcode them to opus. The opus path is covered separately.
+            worker_settings = WorkerSettings(
+                internal_api_token="test-internal-token", audio_format="wav"
+            )
             processed = await run_once(
                 server_client, FakeTranscriber(), worker_settings, poll_timeout=1
             )

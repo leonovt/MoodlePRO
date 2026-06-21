@@ -81,7 +81,11 @@ async def run_once(
     started = time.monotonic()
     try:
         with tempfile.TemporaryDirectory() as tmp:
-            audio_path = await client.fetch_audio(http_client, worker_settings, job_id, Path(tmp) / "audio.wav")
+            ext = "opus" if worker_settings.audio_format == "opus" else "wav"
+            audio_path = await client.fetch_audio(
+                http_client, worker_settings, job_id, Path(tmp) / f"audio.{ext}",
+                audio_format=worker_settings.audio_format,
+            )
             fetched = time.monotonic()
 
             segments = await _transcribe_and_stream(
