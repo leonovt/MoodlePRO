@@ -169,11 +169,17 @@ export async function main(doc = document, serverBaseUrl = DEFAULT_SERVER_BASE_U
           status.showError("התמלול נכשל. נסו שוב מאוחר יותר.");
         }
       });
-      // If segments arrive via the HTTP fallback poller instead of the WebSocket, the
-      // socket's hide() never fires — so hide the banner once the backfill has segments.
+      // The live WebSocket can fail to deliver (page CSP blocks wss://), so this poller is
+      // what actually clears the loading banner: hide on completion (even if the backfill
+      // produced no segments), show an error on failure, and only leave the banner up if the
+      // window elapsed without finishing.
       fallbackForMissedSegments(api, job.id, sidebar, overlay)
-        .then(() => {
-          if (sidebar.segments.length > 0) status.hide();
+        .then((outcome) => {
+          if (outcome === "failed") {
+            status.showError("התמלול נכשל. נסו שוב מאוחר יותר.");
+          } else if (outcome === "completed" || outcome === "segments") {
+            status.hide();
+          }
         })
         .catch(() => {});
 
