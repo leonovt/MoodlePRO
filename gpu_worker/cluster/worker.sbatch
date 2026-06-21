@@ -55,6 +55,12 @@ export PYTHONUNBUFFERED=TRUE                        ### live, unbuffered logs in
 module load anaconda
 source activate "$CONDA_ENV"
 
+### faster-whisper / CTranslate2 dlopen CUDA libs (libcublas.so.12, libcudnn*) at runtime.
+### They're shipped by the pip wheels nvidia-cublas-cu12 + nvidia-cudnn-cu12 (installed into
+### the conda env — see cluster/README.md). Put their lib dirs on the loader path so the
+### GPU encode step can find them; otherwise: "Library libcublas.so.12 is not found".
+export LD_LIBRARY_PATH="$(python -c 'import os, nvidia.cublas.lib, nvidia.cudnn.lib; print(os.path.dirname(nvidia.cublas.lib.__file__) + ":" + os.path.dirname(nvidia.cudnn.lib.__file__))')${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
 echo "=== GPU allocated ==="
 nvidia-smi -L
 

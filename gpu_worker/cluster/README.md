@@ -45,8 +45,11 @@ conda create -y -n moodlepro python=3.11
 source activate moodlepro
 
 cd ~/MoodlePRO/gpu_worker
-# Enable the real model: uncomment faster-whisper in requirements.txt, then:
+# Enable the real model: uncomment faster-whisper AND the two nvidia-*-cu12 lines in
+# requirements.txt (the CUDA libs CTranslate2 dlopens at runtime), then:
 pip install -r requirements.txt
+# If you already installed faster-whisper alone and hit "libcublas.so.12 not found",
+# just add the CUDA libs: pip install nvidia-cublas-cu12 nvidia-cudnn-cu12
 conda deactivate                              # the guide: submit jobs with the env DEACTIVATED
 ```
 
