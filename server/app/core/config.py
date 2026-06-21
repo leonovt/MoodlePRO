@@ -25,8 +25,8 @@ class Settings(BaseSettings):
 
     # Numeric Moodle user ids (the stable "moodle:<id>" key the extension already sends
     # with every request) that never get quota-gated, with no prompt/self-report needed
-    # at all. leonovt = 439866, prives = 428572.
-    unlimited_user_ids: set[str] = {"moodle:439866", "moodle:428572"}
+    # at all. leonovt = 439866, prives = 102494.
+    unlimited_user_ids: set[str] = {"moodle:439866", "moodle:102494"}
 
     # Master switch for the cluster GPU worker path. When False, the server never
     # enqueues to the cluster and never waits for a worker heartbeat — every job goes
