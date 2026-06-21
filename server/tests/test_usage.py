@@ -57,6 +57,35 @@ async def test_quota_blocks_after_base_limit(client, monkeypatch):
     assert blocked.json()["detail"] == "lecture_quota_reached"
 
 
+async def test_over_quota_rejected_before_download(client, monkeypatch):
+    """The 403 must come UP FRONT — before the slow download/extract — so the user gets
+    an immediate out-of-credits message instead of waiting for the file to download."""
+    monkeypatch.setattr(settings, "base_lecture_quota", 1)
+    counter = {"n": 0}
+    monkeypatch.setattr(audio_extract, "hash_audio", lambda _p: f"hash-{(counter.__setitem__('n', counter['n'] + 1) or counter['n'])}")
+
+    assert (await _post_job(client, "user-fast", "lec-0")).status_code == 200
+
+    # Now over quota: the pipeline must NOT run for the rejected request.
+    called = {"download": False, "extract": False}
+
+    async def spy_download(video_url, dest_dir):
+        called["download"] = True
+        raise AssertionError("download must not run when over quota")
+
+    def spy_extract(video_path, dest_path):
+        called["extract"] = True
+        raise AssertionError("extract must not run when over quota")
+
+    monkeypatch.setattr(video_fetch, "download_video", spy_download)
+    monkeypatch.setattr(audio_extract, "extract_audio", spy_extract)
+
+    blocked = await _post_job(client, "user-fast", "lec-1")
+    assert blocked.status_code == 403
+    assert blocked.json()["detail"] == "lecture_quota_reached"
+    assert called == {"download": False, "extract": False}
+
+
 async def test_rewatch_does_not_consume_quota(client, monkeypatch):
     monkeypatch.setattr(settings, "base_lecture_quota", 1)
     monkeypatch.setattr(audio_extract, "hash_audio", lambda _p: "hash-rewatch")

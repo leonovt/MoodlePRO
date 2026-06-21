@@ -28,6 +28,23 @@ def _is_unlimited(reward: UserReward | None, user_id: str) -> bool:
     return reward.username.lower() in {u.lower() for u in settings.unlimited_usernames}
 
 
+async def can_transcribe(session: AsyncSession, user_id: str, lecture_key: str) -> bool:
+    """Read-only quota check (no reservation), mirroring check_and_reserve's allow logic.
+
+    Lets the API reject an over-quota user UP FRONT — before the slow video download and
+    audio extraction — instead of after, so the out-of-credits message is immediate. The
+    authoritative reservation still happens in check_and_reserve once we know a real
+    transcription is needed (so content-cache hits stay free).
+    """
+    existing = await session.get(UserLecture, {"user_id": user_id, "lecture_key": lecture_key})
+    if existing is not None:
+        return True  # already counted — re-watch is free
+    reward = await session.get(UserReward, user_id)
+    if _is_unlimited(reward, user_id):
+        return True
+    return await _count_lectures(session, user_id) < await _limit_for(session, user_id)
+
+
 async def check_and_reserve(session: AsyncSession, user_id: str, lecture_key: str) -> bool:
     """Reserve a quota slot for (user, lecture). Returns True if allowed.
 

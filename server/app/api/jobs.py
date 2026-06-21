@@ -69,6 +69,15 @@ async def create_job(
             await session.commit()
             return await _to_response(session, job, from_cache=True)
 
+    # Quota pre-check BEFORE the slow download/extract, so an over-quota user gets an
+    # immediate 403 instead of waiting minutes for the file to download first. This is a
+    # read-only check; the authoritative reservation still happens after the content-hash
+    # cache check below (so cache hits stay free). Edge case: a user who is over quota and
+    # requests a NEW moodle id whose audio happens to already be cached under a different
+    # id is rejected here even though it would have been free — rare, and acceptable.
+    if request.user_id and not await usage.can_transcribe(session, request.user_id, lecture_key):
+        raise HTTPException(status_code=403, detail="lecture_quota_reached")
+
     job = Job(
         video_url=request.video_url,
         moodle_video_id=request.moodle_video_id,
