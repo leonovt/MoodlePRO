@@ -66,6 +66,22 @@ async def test_worker_completion_flow(client, internal_headers):
     assert "Shalom" in srt_resp.text
 
 
+async def test_recent_jobs_lists_provider(client, internal_headers):
+    create = await client.post("/jobs", json={"video_url": "https://example.com/recent.mp4"})
+    job_id = create.json()["id"]
+    await client.post(
+        f"/internal/jobs/{job_id}/complete",
+        json={"text": "t", "srt": "s", "language": "he"},
+        headers=internal_headers,
+    )
+
+    resp = await client.get("/jobs/recent?limit=5")
+    assert resp.status_code == 200
+    rows = resp.json()
+    # the job we just completed via the worker endpoint shows provider "cluster"
+    assert any(r["id"] == job_id and r["provider"] == "cluster" for r in rows)
+
+
 async def test_internal_endpoint_rejects_bad_token(client):
     create_resp = await client.post("/jobs", json={"video_url": "https://example.com/lecture3.mp4"})
     job_id = create_resp.json()["id"]

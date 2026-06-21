@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -8,6 +9,11 @@ from redis.asyncio import Redis
 from app.api import content, internal, jobs, users, ws
 from app.core.config import settings
 from app.db.session import init_db
+
+# Route our own loggers (app.services.fallback "via Groq fallback", etc.) to stdout.
+# Uvicorn only wires up its own access logs, so without this our logger.info calls are
+# invisible in `docker logs`, which made the routing impossible to trace.
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 
 @asynccontextmanager
