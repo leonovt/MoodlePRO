@@ -58,16 +58,38 @@ class FakeTranscriber(Transcriber):
 
 
 class WhisperTranscriber(Transcriber):
-    """Real faster-whisper + ivrit-ai pipeline. Requires CUDA and the faster-whisper package."""
+    """Real faster-whisper + ivrit-ai pipeline. Requires CUDA and the faster-whisper package.
 
-    def __init__(self, model_name: str, device: str, compute_type: str, language: str):
+    Uses the batched inference pipeline (parallelizes chunks for ~2-4x throughput over
+    sequential decoding) with VAD filtering (skips silence, so there's less audio to
+    transcribe). Falls back to the plain sequential path if the installed faster-whisper
+    is too old to have BatchedInferencePipeline."""
+
+    def __init__(self, model_name: str, device: str, compute_type: str, language: str, batch_size: int = 16):
         from faster_whisper import WhisperModel  # local import: heavy, GPU-only dependency
 
         self._model = WhisperModel(model_name, device=device, compute_type=compute_type)
         self._language = language
+        self._batch_size = batch_size
+        try:
+            from faster_whisper import BatchedInferencePipeline
+
+            self._batched = BatchedInferencePipeline(model=self._model)
+        except Exception:  # noqa: BLE001 - older faster-whisper: fall back to sequential
+            self._batched = None
 
     def transcribe(self, audio_path: Path) -> Iterator[Segment]:
-        segments, _info = self._model.transcribe(str(audio_path), language=self._language)
+        if self._batched is not None and self._batch_size > 1:
+            segments, _info = self._batched.transcribe(
+                str(audio_path),
+                language=self._language,
+                batch_size=self._batch_size,
+                vad_filter=True,
+            )
+        else:
+            segments, _info = self._model.transcribe(
+                str(audio_path), language=self._language, vad_filter=True
+            )
         for seg in segments:
             yield Segment(text=seg.text.strip(), start=seg.start, end=seg.end)
 
@@ -76,7 +98,8 @@ def get_transcriber(settings: WorkerSettings) -> Transcriber:
     if settings.fake_transcribe:
         return FakeTranscriber()
     return WhisperTranscriber(
-        settings.model_name, settings.device, settings.compute_type, settings.language
+        settings.model_name, settings.device, settings.compute_type, settings.language,
+        settings.batch_size,
     )
 
 

@@ -23,6 +23,10 @@ class WorkerSettings(BaseSettings):
     device: str = "cuda"
     compute_type: str = "float16"
     language: str = "he"
+    # Batched inference parallelizes chunks for a big speedup (2-4x) over sequential
+    # decoding; VAD skips silence. batch_size trades VRAM for speed — 16 fits the turbo
+    # model on a 24GB card comfortably. Set to 1 to effectively disable batching.
+    batch_size: int = 16
 
 
 settings = WorkerSettings()
