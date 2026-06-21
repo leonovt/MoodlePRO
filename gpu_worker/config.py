@@ -20,6 +20,12 @@ class WorkerSettings(BaseSettings):
     # can be built and tested end-to-end.
     fake_transcribe: bool = True
     model_name: str = "ivrit-ai/whisper-large-v3-turbo-ct2"
+    # Optional second model for non-Hebrew audio. The ivrit model is Hebrew-finetuned and
+    # both mis-detects and under-transcribes English; a stock multilingual model handles
+    # English (and language detection) far better. When set, the worker detects the language
+    # with this model and routes Hebrew->ivrit, everything else->this. Empty = single-model
+    # autodetect (legacy). ~1.6GB extra VRAM (fine on a 24GB card).
+    english_model_name: str = "deepdml/faster-whisper-large-v3-turbo-ct2"
     device: str = "cuda"
     compute_type: str = "float16"
     # "auto" autodetects per lecture (Hebrew, English, or mixed). Pin to "he"/"en" only to

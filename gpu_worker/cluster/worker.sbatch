@@ -42,6 +42,9 @@ fi
 ### (UPPER_SNAKE maps to the WorkerSettings fields), so no .env file is required here.
 export FAKE_TRANSCRIBE=false
 export MODEL_NAME="${MODEL_NAME:-ivrit-ai/whisper-large-v3-turbo-ct2}"
+### Stock multilingual model for non-Hebrew audio + language detection (the ivrit model is
+### Hebrew-biased). Downloaded to HF_HOME on first run (~1.6GB). Set empty to disable.
+export ENGLISH_MODEL_NAME="${ENGLISH_MODEL_NAME:-deepdml/faster-whisper-large-v3-turbo-ct2}"
 export DEVICE=cuda
 export COMPUTE_TYPE="${COMPUTE_TYPE:-float16}"
 export LANGUAGE="${LANGUAGE:-auto}"          ### autodetect per lecture; pin to he/en to force
