@@ -1,0 +1,8 @@
+{
+  "name": "moodlepro-hub02-pages",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "jose": "^5.9.6"
+  }
+}

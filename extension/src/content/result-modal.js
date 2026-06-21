@@ -1,3 +1,6 @@
+import { COLORS, addHoverEffect } from "./theme.js";
+import { renderRichText } from "./markdown-render.js";
+
 /** Computes a grade line + short Hebrew advice from quiz results. Pure, so it's unit-tested. */
 export function gradeAdvice(correct, total, missedTitles = []) {
   const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
@@ -48,17 +51,26 @@ export function createResultModal(doc) {
     box.id = "moodlepro-modal";
     box.style.cssText = [
       "position:relative", "background:#fff !important", "color:#111 !important", "max-width:600px",
-      "width:90%", "max-height:80vh", "overflow-y:auto", "border-radius:8px",
+      "width:90%", "max-height:80vh", "overflow-y:auto", "border-radius:10px",
+      "border:1px solid " + COLORS.border,
       "padding:20px", "font-family:sans-serif", "font-size:14px",
       "box-shadow:0 4px 24px rgba(0,0,0,.4)",
     ].join(";");
+
+    if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.getURL) {
+      const logo = doc.createElement("img");
+      logo.src = chrome.runtime.getURL("icons/logo.png");
+      logo.alt = "MoodlePRO";
+      logo.style.cssText = "position:absolute;top:10px;left:14px;width:24px;height:24px;border-radius:50%;";
+      box.appendChild(logo);
+    }
 
     const closeButton = doc.createElement("button");
     closeButton.textContent = "×";
     closeButton.style.cssText = [
       "position:absolute", "top:8px", "right:12px", "border:none",
       "background:transparent", "font-size:22px", "line-height:1",
-      "cursor:pointer", "color:#333",
+      "cursor:pointer", "color:" + COLORS.orangeDeep,
     ].join(";");
     closeButton.addEventListener("click", close);
     box.appendChild(closeButton);
@@ -78,9 +90,9 @@ export function createResultModal(doc) {
 
   function showSummary(text) {
     const content = open();
-    const p = doc.createElement("p");
-    p.textContent = text;
-    p.style.cssText = "white-space:pre-wrap;margin-top:8px;color:#111 !important;";
+    const p = doc.createElement("div");
+    p.style.cssText = "margin-top:8px;color:#111 !important;";
+    renderRichText(doc, p, text);
     content.appendChild(p);
   }
 
@@ -103,18 +115,23 @@ export function createResultModal(doc) {
       qBlock.style.cssText = "margin:16px 0;padding-bottom:12px;border-bottom:1px solid #ddd;";
 
       const qText = doc.createElement("div");
-      qText.textContent = `${qIndex + 1}. ${q.question}`;
       qText.style.cssText = "font-weight:bold;margin-bottom:8px;color:#111 !important;";
+      const qNumber = doc.createElement("span");
+      qNumber.textContent = `${qIndex + 1}. `;
+      const qBody = doc.createElement("span");
+      renderRichText(doc, qBody, q.question);
+      qText.appendChild(qNumber);
+      qText.appendChild(qBody);
       qBlock.appendChild(qText);
 
       const explanation = doc.createElement("div");
-      explanation.textContent = q.explanation ?? "";
+      renderRichText(doc, explanation, q.explanation ?? "");
       explanation.style.cssText = "display:none;margin-top:8px;font-style:italic;color:#444 !important;";
 
       let answered = false;
       q.options.forEach((option, optIndex) => {
         const optionButton = doc.createElement("button");
-        optionButton.textContent = option;
+        renderRichText(doc, optionButton, option);
         optionButton.style.cssText = [
           "display:block", "width:100%", "text-align:left", "margin:4px 0",
           "padding:8px", "border:1px solid #ccc", "border-radius:4px",
@@ -169,9 +186,9 @@ export function createResultModal(doc) {
 
   function showSummaryAndQuiz(summaryText, questions) {
     const content = open();
-    const p = doc.createElement("p");
-    p.textContent = summaryText;
-    p.style.cssText = "white-space:pre-wrap;margin-top:8px;";
+    const p = doc.createElement("div");
+    p.style.cssText = "margin-top:8px;";
+    renderRichText(doc, p, summaryText);
     content.appendChild(p);
     renderQuizInto(content, questions);
   }

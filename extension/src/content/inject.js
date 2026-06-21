@@ -1,6 +1,7 @@
 import { createApiClient } from "../shared/api-client.js";
 import { MSG } from "../shared/messages.js";
 import { attachChapters } from "./chapters.js";
+import { replaceBguLogo } from "./brand-logo.js";
 import { createCaptionOverlay } from "./caption-overlay.js";
 import { injectCourseItemButtons } from "./course-items.js";
 import { findBguVideoPlayer } from "./detect-player.js";
@@ -87,6 +88,7 @@ export async function main(doc = document, serverBaseUrl = DEFAULT_SERVER_BASE_U
   if (typeof window !== "undefined") {
     installFetchProxy(serverBaseUrl);
   }
+  replaceBguLogo(doc);
   injectFeedbackButton(doc);
 
   const player = findBguVideoPlayer(doc);

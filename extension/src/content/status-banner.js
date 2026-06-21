@@ -1,3 +1,5 @@
+import { COLORS } from "./theme.js";
+
 function ensureSpinnerStyle(doc) {
   if (doc.getElementById("moodlepro-spin-style")) return;
   const style = doc.createElement("style");
@@ -24,7 +26,7 @@ export function createStatusBanner(doc, videoEl) {
 
   const spinner = doc.createElement("span");
   spinner.style.cssText = [
-    "display:inline-block", "width:12px", "height:12px", "border:2px solid #fff",
+    "display:inline-block", "width:12px", "height:12px", "border:2px solid " + COLORS.orangeLight,
     "border-top-color:transparent", "border-radius:50%",
     "animation:moodlepro-spin .8s linear infinite",
   ].join(";");
@@ -56,13 +58,13 @@ export function createStatusBanner(doc, videoEl) {
   return {
     banner,
     showLoading(text) {
-      render({ background: "rgba(0,0,0,.75)", withSpinner: true, text });
+      render({ background: "rgba(26,17,7,.85)", withSpinner: true, text });
     },
     showError(text) {
       render({ background: "rgba(180,30,30,.92)", withSpinner: false, text });
     },
     showInfo(text, { autoHideMs = 6000 } = {}) {
-      render({ background: "rgba(30,130,60,.92)", withSpinner: false, text });
+      render({ background: COLORS.orangeDeep, withSpinner: false, text });
       const win = doc.defaultView;
       if (autoHideMs && win && win.setTimeout) {
         autoHideTimer = win.setTimeout(hide, autoHideMs);

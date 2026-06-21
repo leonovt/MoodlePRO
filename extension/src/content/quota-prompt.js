@@ -1,4 +1,5 @@
 import { REVIEW_URL } from "./feedback.js";
+import { COLORS, addHoverEffect } from "./theme.js";
 
 /** Shown when a user hits their lecture quota. Offers the honor-system review path:
  *  "Leave a review" opens hub02; "I left a review" calls onReviewed() to claim the bonus
@@ -16,10 +17,19 @@ export function showQuotaPrompt(doc, { onReviewed, onContinue, win = doc.default
 
   const box = doc.createElement("div");
   box.style.cssText = [
-    "background:#fff", "color:#111", "max-width:380px", "width:90%", "border-radius:8px",
+    "background:#fff", "color:#111", "max-width:380px", "width:90%", "border-radius:10px",
+    "border:1px solid " + COLORS.border,
     "padding:22px", "font-family:sans-serif", "direction:rtl", "text-align:center",
     "box-shadow:0 4px 24px rgba(0,0,0,.4)",
   ].join(";");
+
+  if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.getURL) {
+    const logo = doc.createElement("img");
+    logo.src = chrome.runtime.getURL("icons/logo.png");
+    logo.alt = "MoodlePRO";
+    logo.style.cssText = "width:40px;height:40px;border-radius:50%;margin-bottom:10px;";
+    box.appendChild(logo);
+  }
 
   const title = doc.createElement("div");
   title.textContent = "הגעת למכסת ההרצאות החינמית";
@@ -35,7 +45,8 @@ export function showQuotaPrompt(doc, { onReviewed, onContinue, win = doc.default
 
   const reviewBtn = doc.createElement("button");
   reviewBtn.textContent = "⭐ השאר ביקורת";
-  reviewBtn.style.cssText = "display:block;width:100%;margin:6px 0;padding:9px;border:none;border-radius:5px;background:#ff9800;color:#fff;font-weight:600;font-size:14px;cursor:pointer;";
+  reviewBtn.style.cssText = "display:block;width:100%;margin:6px 0;padding:9px;border:none;border-radius:7px;background:" + COLORS.orange + ";color:#fff;font-weight:600;font-size:14px;cursor:pointer;transition:background .15s ease;";
+  addHoverEffect(reviewBtn, COLORS.orange, COLORS.orangeDeep);
   reviewBtn.addEventListener("click", () => {
     if (win && win.open) win.open(REVIEW_URL, "_blank", "noopener,noreferrer");
   });

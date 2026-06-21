@@ -1,4 +1,5 @@
 import * as esbuild from "esbuild";
+import { cpSync, mkdirSync } from "fs";
 
 // Server the built extension talks to. Defaults to production; override for local dev with
 // MOODLEPRO_SERVER_URL=http://localhost:8000 npm run build
@@ -22,3 +23,9 @@ for (const [entryPoint, outfile] of entries) {
 console.log(`Built with server base URL: ${SERVER_BASE_URL}`);
 
 console.log("Built extension bundles into dist/");
+
+mkdirSync("vendor/katex", { recursive: true });
+cpSync("node_modules/katex/dist/katex.min.css", "vendor/katex/katex.min.css");
+cpSync("node_modules/katex/dist/fonts", "vendor/katex/fonts", { recursive: true });
+
+console.log("Copied KaTeX assets into vendor/katex/");

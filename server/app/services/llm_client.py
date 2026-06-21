@@ -3,6 +3,8 @@ from google import genai
 from app.core.config import settings
 
 MODEL = "gemini-3.1-flash-lite"
+# Used for the assignment-solving feature, which needs more reasoning than casual summaries/quizzes.
+STRONG_MODEL = "gemini-3.1-pro"
 
 _client: genai.Client | None = None
 

@@ -1,4 +1,5 @@
 import { findActiveSegmentIndex } from "./segment-sync.js";
+import { COLORS } from "./theme.js";
 
 /** Renders the active segment as a caption layer absolutely positioned over the video. */
 export function createCaptionOverlay(doc, videoEl) {
@@ -11,7 +12,8 @@ export function createCaptionOverlay(doc, videoEl) {
   overlay.id = "moodlepro-caption-overlay";
   overlay.style.cssText = [
     "position:absolute", "bottom:8%", "left:50%", "transform:translateX(-50%)",
-    "max-width:80%", "background:rgba(0,0,0,.65)", "color:#fff", "padding:6px 14px",
+    "max-width:80%", "background:rgba(26,17,7,.75)", "color:" + COLORS.cream,
+    "padding:6px 14px", "border:1px solid " + COLORS.orange,
     "border-radius:6px", "font-size:18px", "text-align:center", "direction:rtl",
     "z-index:2147483000", "pointer-events:none",
   ].join(";");

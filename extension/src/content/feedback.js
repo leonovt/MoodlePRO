@@ -1,3 +1,5 @@
+import { COLORS, addHoverEffect } from "./theme.js";
+
 // TODO(before publish): this points at a TEMPORARY hub02 project. Replace with the real
 // MoodlePRO review/hub02 URL once the project is published. Used by the feedback button
 // and the lecture-quota review prompt (quota-prompt.js).
@@ -13,9 +15,11 @@ export function injectFeedbackButton(doc, win = doc.defaultView) {
   button.textContent = "⭐ Leave a review";
   button.style.cssText = [
     "position:fixed", "bottom:12px", "left:12px", "z-index:2147483600",
-    "padding:6px 12px", "font-size:12px", "border:none", "border-radius:4px",
-    "background:#333", "color:#fff", "cursor:pointer", "font-family:sans-serif",
+    "padding:6px 12px", "font-size:12px", "border:1px solid " + COLORS.orangeDeep, "border-radius:6px",
+    "background:" + COLORS.dark, "color:" + COLORS.cream, "cursor:pointer", "font-family:sans-serif",
+    "transition:background .15s ease",
   ].join(";");
+  addHoverEffect(button, COLORS.dark, COLORS.orangeDeep);
 
   button.addEventListener("click", () => {
     win.open(REVIEW_URL, "_blank", "noopener,noreferrer");

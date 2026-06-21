@@ -1,10 +1,12 @@
 import { createResultModal } from "./result-modal.js";
 import { arrayBufferToBase64, resolveResourceFile } from "./resource-file.js";
 import { scrapeCourseItems } from "./course-scraper.js";
+import { showQuizConfig } from "./quiz-config.js";
+import { COLORS, addHoverEffect } from "./theme.js";
 
-/** Slides/resource items don't carry real content in their course-page text — fetch the actual file. */
+/** Slides and assignment items don't carry real content in their course-page text — fetch the actual file. */
 async function resolveFileFields(item) {
-  if (item.type !== "slides" || !item.href) return {};
+  if ((item.type !== "slides" && item.type !== "assignment") || !item.href) return {};
   const file = await resolveResourceFile(item.href);
   if (!file) return {};
   return { file_base64: arrayBufferToBase64(file.buffer), mime_type: file.mimeType };
@@ -48,13 +50,14 @@ export function injectCourseItemButtons(doc, serverBaseUrl) {
       button.textContent = label;
       button.style.cssText = [
         "display:block", "margin-top:6px", "padding:4px 10px", "font-size:12px",
-        "border:1px solid #e07a00", "border-radius:4px", "background:#ff9800", "color:#fff",
-        "font-weight:600", "cursor:pointer",
+        "border:1px solid " + COLORS.orangeDeep, "border-radius:6px", "background:" + COLORS.orange,
+        "color:#fff", "font-weight:600", "cursor:pointer", "transition:background .15s ease",
       ].join(";");
+      addHoverEffect(button, COLORS.orange, COLORS.orangeDeep);
       return button;
     };
 
-    const summaryButton = makeButton("📝 Summary");
+    const summaryButton = makeButton("📝 סיכום");
     summaryButton.addEventListener("click", async () => {
       const modal = createResultModal(doc);
       modal.showLoading();
@@ -73,26 +76,51 @@ export function injectCourseItemButtons(doc, serverBaseUrl) {
       }
     });
 
-    const quizButton = makeButton("🧠 Quiz");
-    quizButton.addEventListener("click", async () => {
-      const modal = createResultModal(doc);
-      modal.showLoading();
-      try {
-        const fileFields = await resolveFileFields(item);
-        const quizRes = await postJson(`${httpBase}/items/quiz`, {
-          title: item.title,
-          text: item.text,
-          item_type: item.type,
-          num_questions: 5,
-          ...fileFields,
-        });
-        modal.showQuiz(quizRes.questions);
-      } catch (err) {
-        modal.showSummary(`Failed to load: ${err.message}`);
-      }
+    const quizButton = makeButton("🧠 חידון");
+    quizButton.addEventListener("click", () => {
+      showQuizConfig(doc, quizButton, async (numQuestions, difficulty) => {
+        const modal = createResultModal(doc);
+        modal.showLoading();
+        try {
+          const fileFields = await resolveFileFields(item);
+          const quizRes = await postJson(`${httpBase}/items/quiz`, {
+            title: item.title,
+            text: item.text,
+            item_type: item.type,
+            num_questions: numQuestions,
+            difficulty,
+            ...fileFields,
+          });
+          modal.showQuiz(quizRes.questions);
+        } catch (err) {
+          modal.showSummary(`Failed to load: ${err.message}`);
+        }
+      });
     });
 
     nameArea.appendChild(summaryButton);
     nameArea.appendChild(quizButton);
+
+    if (item.type === "assignment") {
+      const solveButton = makeButton("🧩 פתרון");
+      solveButton.addEventListener("click", async () => {
+        const modal = createResultModal(doc);
+        modal.showLoading();
+        try {
+          const fileFields = await resolveFileFields(item);
+          const solveRes = await postJson(`${httpBase}/items/summary`, {
+            title: item.title,
+            text: item.text,
+            item_type: item.type,
+            mode: "solve",
+            ...fileFields,
+          });
+          modal.showSummary(solveRes.summary);
+        } catch (err) {
+          modal.showSummary(`Failed to load: ${err.message}`);
+        }
+      });
+      nameArea.appendChild(solveButton);
+    }
   });
 }

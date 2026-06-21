@@ -44,7 +44,11 @@ async def summarize_item(request: SummaryRequest) -> SummaryResponse:
 @router.post("/items/quiz", response_model=QuizResponse)
 async def quiz_item(request: QuizRequest) -> QuizResponse:
     questions = await get_quiz_generator().generate_quiz(
-        request.text, request.num_questions, file_base64=request.file_base64, mime_type=request.mime_type
+        request.text,
+        request.num_questions,
+        difficulty=request.difficulty,
+        file_base64=request.file_base64,
+        mime_type=request.mime_type,
     )
     return QuizResponse(questions=[QuizQuestion(**q) for q in questions])
 

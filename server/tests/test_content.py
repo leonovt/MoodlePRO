@@ -3,9 +3,11 @@ from pathlib import Path
 import pytest
 
 from app.services import audio_extract, video_fetch
+from app.services import summarizer as summarizer_module
 from app.services.chaptering import FakeChapterer
+from app.services.llm_client import MODEL, STRONG_MODEL
 from app.services.quiz import FakeQuizGenerator
-from app.services.summarizer import FakeSummarizer
+from app.services.summarizer import FakeSummarizer, GeminiSummarizer
 
 
 @pytest.fixture(autouse=True)
@@ -36,6 +38,37 @@ async def test_fake_summarizer_returns_stub_string():
     assert "[FAKE SUMMARY]" in result
     assert "5 words" in result
     assert "formal" in result
+
+
+async def test_fake_summarizer_solve_mode_returns_solution_stub():
+    result = await FakeSummarizer().summarize("question one plus one", mode="solve")
+    assert "[FAKE SOLUTION]" in result
+
+
+async def test_gemini_summarizer_uses_strong_model_for_solve_mode(monkeypatch):
+    captured = {}
+
+    class FakeResponse:
+        text = "solved"
+
+    class FakeModels:
+        async def generate_content(self, model, contents, config):
+            captured["model"] = model
+            return FakeResponse()
+
+    class FakeAio:
+        models = FakeModels()
+
+    class FakeClient:
+        aio = FakeAio()
+
+    monkeypatch.setattr(summarizer_module, "get_client", lambda: FakeClient())
+
+    await GeminiSummarizer().summarize("solve this", mode="solve")
+    assert captured["model"] == STRONG_MODEL
+
+    await GeminiSummarizer().summarize("summarize this", mode="casual")
+    assert captured["model"] == MODEL
 
 
 async def test_fake_quiz_generator_shape_and_correct_index_range():
@@ -103,6 +136,32 @@ async def test_post_items_quiz(client):
     for q in body["questions"]:
         assert 0 <= q["correct_index"] < 4
         assert len(q["options"]) == 4
+
+
+async def test_post_items_quiz_honors_difficulty(client):
+    response = await client.post(
+        "/items/quiz",
+        json={
+            "title": "Assignment 1",
+            "text": "do the homework",
+            "item_type": "assignment",
+            "num_questions": 2,
+            "difficulty": "hard",
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["questions"]) == 2
+    assert "(hard)" in body["questions"][0]["question"]
+
+
+async def test_post_items_summary_solve_mode(client):
+    response = await client.post(
+        "/items/summary",
+        json={"title": "Assignment 1", "text": "solve for x: x + 1 = 2", "item_type": "assignment", "mode": "solve"},
+    )
+    assert response.status_code == 200
+    assert "[FAKE SOLUTION]" in response.json()["summary"]
 
 
 async def test_course_summary_scope_everything(client):

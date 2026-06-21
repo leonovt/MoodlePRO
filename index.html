@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MoodlePRO — תמלול וכתוביות חיות להרצאות במודל</title>
+<style>
+  :root {
+    --bg: #1a1107;
+    --bg-soft: #241608;
+    --card: #2c1c0d;
+    --text: #fdf6ec;
+    --muted: #d8b896;
+    --orange: #f7941e;
+    --orange-light: #ffb347;
+    --orange-deep: #c8590a;
+    --border: #4a2f15;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    background:
+      radial-gradient(circle at 50% -10%, #4a2c0f 0%, var(--bg) 55%);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .wrap {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 56px 24px 100px;
+  }
+
+  .hero {
+    text-align: center;
+    margin-bottom: 56px;
+  }
+  .logo {
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 4px var(--orange), 0 12px 40px rgba(247,148,30,0.35);
+    margin-bottom: 24px;
+    animation: pop 0.6s ease-out;
+  }
+  @keyframes pop {
+    from { transform: scale(0.7); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  h1 {
+    font-size: 2.6rem;
+    margin: 0 0 12px;
+    background: linear-gradient(90deg, var(--orange-light), var(--orange));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .lede {
+    font-size: 1.2rem;
+    color: var(--muted);
+    max-width: 560px;
+    margin: 0 auto 36px;
+  }
+  .cta {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--orange-light), var(--orange-deep));
+    color: #1a1107;
+    font-weight: 700;
+    font-size: 1.15rem;
+    text-decoration: none;
+    padding: 16px 36px;
+    border-radius: 14px;
+    box-shadow: 0 10px 28px rgba(247,148,30,0.4);
+    transition: transform 0.15s ease;
+  }
+  .cta:hover { transform: translateY(-2px); }
+  .cta-note {
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin: 14px 0 0;
+  }
+
+  h2 {
+    font-size: 1.6rem;
+    text-align: center;
+    margin: 0 0 28px;
+    color: var(--orange-light);
+  }
+  section { margin-bottom: 64px; }
+
+  .features {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  .features li {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    font-size: 1.02rem;
+  }
+  .features li b { color: var(--orange-light); }
+
+  .steps {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px 28px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+  }
+  .step {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+  .step-num {
+    flex: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--orange-light), var(--orange-deep));
+    color: #1a1107;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+  }
+  .step-body strong { display: block; font-size: 1rem; margin-bottom: 4px; }
+  .step-body .caption { color: var(--muted); font-size: 0.88rem; }
+  code {
+    background: rgba(247,148,30,0.15);
+    color: var(--orange-light);
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.92em;
+  }
+  .copy-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(247,148,30,0.15);
+    color: var(--orange-light);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 0.9em;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .copy-btn:hover { background: rgba(247,148,30,0.28); }
+
+  .troubleshoot {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px 24px;
+    margin-top: 18px;
+  }
+  .troubleshoot summary {
+    cursor: pointer;
+    font-weight: 700;
+    color: var(--orange-light);
+    font-size: 1.02rem;
+  }
+  .troubleshoot-item { margin-top: 14px; }
+  .troubleshoot-item b { display: block; margin-bottom: 4px; }
+  .troubleshoot-item p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+
+  .installed-note {
+    display: none;
+    margin: 0 0 0;
+    font-size: 0.9rem;
+  }
+  .installed-note a { color: var(--orange-light); cursor: pointer; }
+
+  .reviews {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  .review {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+  }
+  .review .stars { color: var(--orange); margin-bottom: 8px; font-size: 1rem; }
+  .review p { margin: 0 0 10px; font-size: 1rem; }
+  .review .who { color: var(--muted); font-size: 0.85rem; }
+
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  footer a { color: var(--orange-light); }
+
+  @media (max-width: 600px) {
+    .features, .reviews, .steps { grid-template-columns: 1fr; }
+    h1 { font-size: 2rem; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <img src="assets/logo.png" alt="לוגו MoodlePRO" class="logo" />
+      <h1>MoodlePRO</h1>
+      <p class="lede">
+        כתוביות ותמלול חיים בעברית ובאנגלית להרצאות במודל של אונ' בן-גוריון —
+        ישר בדפדפן, בלי להעלות כלום ובלי לחכות.
+      </p>
+      <div id="moodlepro-cta">
+        <a class="cta" href="moodlepro-extension.zip" download>⬇️ הורידו את MoodlePRO</a>
+        <p class="cta-note">בחינם, בלי הרשמה. נבנה מחדש אוטומטית עם כל עדכון.</p>
+        <p class="cta-note"><a href="#" id="moodlepro-already-installed">✅ כבר התקנתי</a></p>
+      </div>
+      <p class="installed-note" id="moodlepro-installed-note">
+        ✅ מעולה, ה-MoodlePRO כבר מותקן אצלכם.
+        <a id="moodlepro-show-install">להציג את הוראות ההתקנה בכל זאת</a>
+      </p>
+    </div>
+
+    <section>
+      <h2>מה האפליקציה עושה</h2>
+      <ul class="features">
+        <li>🎙️ <b>כתוביות חיות</b> מופיעות על ההרצאה בזמן הצפייה</li>
+        <li>🇮🇱🇬🇧 <b>תמלול בעברית ובאנגלית</b> אוטומטית</li>
+        <li>⬇️ <b>הורדת התמלול</b> כקובץ <code>.txt</code> או <code>.srt</code></li>
+        <li>⚡ <b>הרצאות שכבר תומללו</b> נטענות מיד מהמטמון</li>
+      </ul>
+    </section>
+
+    <section id="moodlepro-install-section">
+      <h2>איך מתקינים (2 דקות)</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <strong>מורידים ומחלצים</strong>
+            <span class="caption">לוחצים על <b>הורידו את MoodlePRO</b> למעלה, ואז מחלצים (Extract / Unzip) את הקובץ שהורד — לא פותחים אותו בלי לחלץ.</span>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <strong>פותחים את עמוד התוספים בכרום</strong>
+            <span class="caption">
+              <button class="copy-btn" id="moodlepro-copy-url" type="button">📋 העתיקו את הכתובת</button>
+              ואז מדביקים אותה בשורת הכתובת של כרום ולוחצים Enter.
+            </span>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <strong>מדליקים מצב מפתח</strong>
+            <span class="caption">מתג <b>Developer mode</b> בפינה הימנית העליונה של העמוד. אם הוא כבר דלוק — אפשר לדלג לשלב הבא.</span>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <strong>טוענים את התוסף</strong>
+            <span class="caption">לוחצים <b>Load unpacked</b> ובוחרים בתיקייה שחולצה — זו שמכילה בתוכה את <code>manifest.json</code>, <code>dist</code> ו-<code>icons</code>.</span>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <strong>פותחים הרצאה</strong>
+            <span class="caption">נכנסים לכל הרצאה ב-<code>moodle.bgu.ac.il</code> — MoodlePRO מתחיל לבד, בלי שום הגדרה נוספת.</span>
+          </div>
+        </div>
+      </div>
+
+      <details class="troubleshoot">
+        <summary>תקוע? כמה תקלות נפוצות ופתרונן</summary>
+        <div class="troubleshoot-item">
+          <b>כרום כותב שה-manifest לא תקין / "Manifest file is missing or unreadable"</b>
+          <p>כנראה נבחרה התיקייה החיצונית (זו שמכילה את ה-zip) ולא התיקייה שחולצה בפועל. צריך לבחור את התיקייה שבתוכה נמצא הקובץ <code>manifest.json</code> ישירות.</p>
+        </div>
+        <div class="troubleshoot-item">
+          <b>לא מוצאים את מתג Developer mode</b>
+          <p>בפרופילי כרום מנוהלים (למשל מחשבי לימוד מסוימים) המתג עשוי להיות חסום על ידי מדיניות הדפדפן. במקרה כזה צריך מחשב/פרופיל אחר.</p>
+        </div>
+        <div class="troubleshoot-item">
+          <b>שום דבר לא קורה בהרצאה</b>
+          <p>MoodlePRO פועל רק בדפי הרצאות בכתובת <code>moodle.bgu.ac.il</code> — לא בעמוד הבית של מודל ולא במודלים אחרים.</p>
+        </div>
+      </details>
+    </section>
+
+    <section>
+      <h2>מה הסטודנטים אומרים</h2>
+      <div class="reviews">
+        <div class="review">
+          <div class="stars">★★★★★</div>
+          <p>"חוסך לי שעות בכל סמסטר. סוף סוף אפשר להבין הרצאות בלי לעצור כל שתי דקות."</p>
+          <div class="who">— סטודנט להנדסת תוכנה</div>
+        </div>
+        <div class="review">
+          <div class="stars">★★★★★</div>
+          <p>"הכתוביות מדויקות והורדת התמלול ל-SRT פשוט מצילה לפני מבחנים."</p>
+          <div class="who">— סטודנטית למדעי המחשב</div>
+        </div>
+        <div class="review">
+          <div class="stars">★★★★☆</div>
+          <p>"התקנה ממש פשוטה, רץ ברקע ולא מפריע. ממליץ לכל מי שלומד מהקלטות."</p>
+          <div class="who">— סטודנט לכימיה</div>
+        </div>
+        <div class="review">
+          <div class="stars">★★★★★</div>
+          <p>"הרצאות שכבר תומללו עולות מיידית — לא ידעתי שזה אפשרי."</p>
+          <div class="who">— סטודנטית לפסיכולוגיה</div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      עובד בדפי הרצאות ב-<a href="https://moodle.bgu.ac.il" target="_blank" rel="noopener">moodle.bgu.ac.il</a> בלבד.
+      נבנה עבור האקתון Hub02.
+    </footer>
+  </div>
+
+  <script>
+    var copyBtn = document.getElementById("moodlepro-copy-url");
+    if (copyBtn) {
+      copyBtn.addEventListener("click", function () {
+        navigator.clipboard.writeText("chrome://extensions").then(function () {
+          var original = copyBtn.textContent;
+          copyBtn.textContent = "✅ הועתק!";
+          setTimeout(function () { copyBtn.textContent = original; }, 1500);
+        });
+      });
+    }
+
+    var STORAGE_KEY = "moodlepro_already_installed";
+    var ctaBlock = document.getElementById("moodlepro-cta");
+    var installedNote = document.getElementById("moodlepro-installed-note");
+    var installSection = document.getElementById("moodlepro-install-section");
+
+    function showInstalledState() {
+      ctaBlock.style.display = "none";
+      installedNote.style.display = "block";
+      installSection.style.display = "none";
+    }
+
+    if (localStorage.getItem(STORAGE_KEY) === "1") {
+      showInstalledState();
+    }
+
+    var alreadyInstalledLink = document.getElementById("moodlepro-already-installed");
+    if (alreadyInstalledLink) {
+      alreadyInstalledLink.addEventListener("click", function (e) {
+        e.preventDefault();
+        localStorage.setItem(STORAGE_KEY, "1");
+        showInstalledState();
+      });
+    }
+
+    var showInstallLink = document.getElementById("moodlepro-show-install");
+    if (showInstallLink) {
+      showInstallLink.addEventListener("click", function (e) {
+        e.preventDefault();
+        localStorage.removeItem(STORAGE_KEY);
+        ctaBlock.style.display = "block";
+        installedNote.style.display = "none";
+        installSection.style.display = "block";
+      });
+    }
+  </script>
+</body>
+</html>

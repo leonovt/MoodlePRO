@@ -8,3 +8,4 @@ data/
 *.db
 *.log
 docs/*.pdf
+/moodlepro-extension.zip

@@ -1,3 +1,5 @@
+import { COLORS, addHoverEffect } from "./theme.js";
+
 /** A small popup to pick quiz length + difficulty, anchored under a button.
  *  Calls onConfirm(numQuestions, difficulty) when the user clicks Generate. */
 export function showQuizConfig(doc, anchorButton, onConfirm) {
@@ -8,8 +10,8 @@ export function showQuizConfig(doc, anchorButton, onConfirm) {
   menu.id = "moodlepro-quiz-config";
   menu.setAttribute("data-moodlepro-ui", "1");
   menu.style.cssText = [
-    "position:absolute", "z-index:2147483500", "background:#fff", "border:1px solid #bbb",
-    "border-radius:8px", "box-shadow:0 4px 16px rgba(0,0,0,.2)", "padding:14px",
+    "position:absolute", "z-index:2147483500", "background:#fff", "border:1px solid " + COLORS.border,
+    "border-radius:10px", "box-shadow:0 4px 16px rgba(0,0,0,.2)", "padding:14px",
     "width:240px", "font-family:sans-serif", "color:#222", "display:flex",
     "flex-direction:column", "gap:10px",
   ].join(";");
@@ -62,7 +64,8 @@ export function showQuizConfig(doc, anchorButton, onConfirm) {
 
   const generateBtn = doc.createElement("button");
   generateBtn.textContent = "Generate";
-  generateBtn.style.cssText = "padding:4px 12px;font-size:12px;border:none;border-radius:4px;background:#ff9800;color:#fff;cursor:pointer;font-weight:600;";
+  generateBtn.style.cssText = "padding:4px 12px;font-size:12px;border:none;border-radius:6px;background:" + COLORS.orange + ";color:#fff;cursor:pointer;font-weight:600;transition:background .15s ease;";
+  addHoverEffect(generateBtn, COLORS.orange, COLORS.orangeDeep);
   generateBtn.addEventListener("click", () => {
     const numQuestions = parseInt(lengthSelect.value, 10);
     const difficulty = difficultySelect.value;

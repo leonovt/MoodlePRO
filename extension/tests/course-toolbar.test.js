@@ -40,17 +40,17 @@ describe("injectCoursePageToolbar", () => {
     expect(() => injectCoursePageToolbar(document, "http://localhost:8000")).not.toThrow();
   });
 
-  it("injects distinct Course Summary and Course Quiz buttons into the header", () => {
+  it("injects distinct summary and quiz buttons into the header", () => {
     injectCoursePageToolbar(document, "http://localhost:8000");
     const toolbar = document.querySelector('[data-moodlepro-ui="course-page-toolbar"]');
     expect(toolbar).not.toBeNull();
-    expect(toolbar.textContent).toContain("Course Summary");
-    expect(toolbar.textContent).toContain("Course Quiz");
+    expect(toolbar.textContent).toContain("📚");
+    expect(toolbar.textContent).toContain("🧠");
   });
 
   it("opens the selection popup, filters out the technical forum, and lists only the academic lecture/slides", () => {
     injectCoursePageToolbar(document, "http://localhost:8000");
-    const summaryBtn = Array.from(document.querySelectorAll("button")).find(b => b.textContent.includes("Course Summary"));
+    const summaryBtn = Array.from(document.querySelectorAll("button")).find(b => b.textContent.includes("📚"));
     summaryBtn.click();
 
     const menu = document.querySelector("#moodlepro-selection-menu");
@@ -66,7 +66,7 @@ describe("injectCoursePageToolbar", () => {
     });
 
     injectCoursePageToolbar(document, "http://localhost:8000");
-    const summaryBtn = Array.from(document.querySelectorAll("button")).find(b => b.textContent.includes("Course Summary"));
+    const summaryBtn = Array.from(document.querySelectorAll("button")).find(b => b.textContent.includes("📚"));
     summaryBtn.click();
 
     const menu = document.querySelector("#moodlepro-selection-menu");
@@ -98,7 +98,7 @@ describe("injectCoursePageToolbar", () => {
     });
 
     injectCoursePageToolbar(document, "http://localhost:8000");
-    const quizBtn = Array.from(document.querySelectorAll("button")).find(b => b.textContent.includes("Course Quiz"));
+    const quizBtn = Array.from(document.querySelectorAll("button")).find(b => b.textContent.includes("🧠"));
     quizBtn.click();
 
     const menu = document.querySelector("#moodlepro-selection-menu");

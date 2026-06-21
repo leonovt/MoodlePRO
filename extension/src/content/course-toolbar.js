@@ -1,5 +1,6 @@
 import { createResultModal } from "./result-modal.js";
 import { scrapeCourseItems } from "./course-scraper.js";
+import { COLORS, addHoverEffect } from "./theme.js";
 
 function toApiItems(items) {
   return items.map(({ id, type, title, text }) => ({ id, item_type: type, title, text }));
@@ -199,7 +200,8 @@ export function showSelectionMenu(doc, anchorButton, items, isQuiz, onGenerate) 
   const generateBtn = doc.createElement("button");
   generateBtn.id = "moodlepro-generate-btn";
   generateBtn.textContent = isQuiz ? "Generate Quiz" : "Generate Summary";
-  generateBtn.style.cssText = "padding:4px 12px; font-size:12px; border:none; border-radius:4px; background:#ff9800; color:#fff; cursor:pointer; font-weight:600;";
+  generateBtn.style.cssText = "padding:4px 12px; font-size:12px; border:none; border-radius:6px; background:" + COLORS.orange + "; color:#fff; cursor:pointer; font-weight:600; transition:background .15s ease;";
+  addHoverEffect(generateBtn, COLORS.orange, COLORS.orangeDeep);
   generateBtn.addEventListener("click", () => {
     const checked = checkboxes
       .filter(c => c.checkbox.checked)
@@ -251,18 +253,22 @@ export function injectCoursePageToolbar(doc, serverBaseUrl) {
   toolbar.style.cssText = "display:inline-flex; align-items:center; margin-left:15px; margin-top:5px; vertical-align:middle; gap:8px;";
 
   const summaryButton = doc.createElement("button");
-  summaryButton.textContent = "📚 Course Summary";
+  summaryButton.textContent = "📚 סיכום קורס";
   summaryButton.style.cssText = [
-    "padding:6px 12px", "font-size:12px", "border:1px solid #0056b3",
-    "border-radius:4px", "background:#007bff", "color:#fff", "font-weight:600", "cursor:pointer",
+    "padding:6px 12px", "font-size:12px", "border:1px solid " + COLORS.orangeDeep,
+    "border-radius:6px", "background:" + COLORS.orange, "color:#fff", "font-weight:600", "cursor:pointer",
+    "transition:background .15s ease",
   ].join(";");
+  addHoverEffect(summaryButton, COLORS.orange, COLORS.orangeDeep);
 
   const quizButton = doc.createElement("button");
-  quizButton.textContent = "🧠 Course Quiz";
+  quizButton.textContent = "🧠 חידון קורס";
   quizButton.style.cssText = [
-    "padding:6px 12px", "font-size:12px", "border:1px solid #28a745",
-    "border-radius:4px", "background:#28a745", "color:#fff", "font-weight:600", "cursor:pointer",
+    "padding:6px 12px", "font-size:12px", "border:1px solid " + COLORS.orangeDeep,
+    "border-radius:6px", "background:" + COLORS.orangeLight, "color:" + COLORS.dark, "font-weight:600", "cursor:pointer",
+    "transition:background .15s ease",
   ].join(";");
+  addHoverEffect(quizButton, COLORS.orangeLight, COLORS.orange);
 
   summaryButton.addEventListener("click", () => {
     const rawItems = toApiItems(scrapeCourseItems(doc));

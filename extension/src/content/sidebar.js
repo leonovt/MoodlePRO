@@ -1,13 +1,15 @@
 import { findActiveSegmentIndex } from "./segment-sync.js";
+import { COLORS } from "./theme.js";
 
 /** Injects an in-page, auto-scrolling transcript panel right below the video and keeps it in sync. */
 export function createSidebar(doc, videoEl) {
   const panel = doc.createElement("div");
   panel.id = "moodlepro-sidebar";
   panel.style.cssText = [
-    "margin-top:12px", "max-height:50vh", "overflow-y:auto", "background:#111", "color:#eee",
-    "font-family:sans-serif", "font-size:14px", "padding:12px", "direction:rtl",
-    "border-radius:8px", "box-shadow:0 1px 4px rgba(0,0,0,.3)",
+    "margin-top:12px", "max-height:50vh", "overflow-y:auto", "background:" + COLORS.dark,
+    "color:" + COLORS.cream, "font-family:sans-serif", "font-size:14px", "padding:12px",
+    "direction:rtl", "border-radius:8px", "border:1px solid " + COLORS.border,
+    "box-shadow:0 1px 4px rgba(0,0,0,.3)",
   ].join(";");
 
   const mountAfter =
@@ -32,6 +34,7 @@ export function createSidebar(doc, videoEl) {
       line.style.padding = "4px 0";
       line.style.opacity = i === activeIndex ? "1" : "0.6";
       line.style.fontWeight = i === activeIndex ? "bold" : "normal";
+      line.style.color = i === activeIndex ? COLORS.orangeLight : COLORS.cream;
       panel.appendChild(line);
     });
   }
