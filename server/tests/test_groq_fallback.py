@@ -230,6 +230,28 @@ async def test_complete_clears_stale_error_from_lost_fallback(client, internal_h
     assert done["error"] is None
 
 
+async def test_complete_cleans_up_job_files(client, internal_headers, monkeypatch):
+    """Once the transcript is persisted, the job's downloaded video + WAV must be deleted so
+    they don't pile up and fill the disk ('No space left on device')."""
+    from app.services import storage
+
+    monkeypatch.setattr(audio_extract, "hash_audio", lambda path: "hash-cleanup")
+    resp = await client.post("/jobs", json={"video_url": "https://example.com/cleanup.mp4"})
+    job_id = resp.json()["id"]
+
+    job_dir = storage.job_dir(job_id)
+    assert job_dir.exists()  # download/extract created it
+
+    await client.post(
+        f"/internal/jobs/{job_id}/complete",
+        json={"text": "t", "srt": "s", "language": "he"},
+        headers=internal_headers,
+    )
+    assert not job_dir.exists()  # cleaned up after completion
+    # Transcript still served from the cache, no files needed.
+    assert (await client.get(f"/jobs/{job_id}/txt")).text == "t"
+
+
 async def test_worker_will_handle_false_when_cluster_disabled(monkeypatch):
     """Kill switch: even with a live worker heartbeat, a disabled cluster goes to Groq."""
     monkeypatch.setattr(settings, "cluster_enabled", False)
