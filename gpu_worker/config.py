@@ -22,7 +22,9 @@ class WorkerSettings(BaseSettings):
     model_name: str = "ivrit-ai/whisper-large-v3-turbo-ct2"
     device: str = "cuda"
     compute_type: str = "float16"
-    language: str = "he"
+    # "auto" autodetects per lecture (Hebrew, English, or mixed). Pin to "he"/"en" only to
+    # force a language. Forcing the wrong one garbles output (English read as Hebrew).
+    language: str = "auto"
     # Batched inference parallelizes chunks for a big speedup (2-4x) over sequential
     # decoding; VAD skips silence. batch_size trades VRAM for speed — 16 fits the turbo
     # model on a 24GB card comfortably. Set to 1 to effectively disable batching.

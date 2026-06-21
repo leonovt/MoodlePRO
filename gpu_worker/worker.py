@@ -91,10 +91,11 @@ async def run_once(
 
         text = " ".join(segment.text for segment in segments)
         srt = build_srt(segments)
-        await client.post_complete(http_client, worker_settings, job_id, text, srt)
+        language = getattr(transcriber, "detected_language", None) or worker_settings.language
+        await client.post_complete(http_client, worker_settings, job_id, text, srt, language=language)
         logger.info(
-            "completed job %s: %d segments, fetch=%.1fs transcribe+stream=%.1fs total=%.1fs",
-            job_id, len(segments), fetched - started, transcribed - fetched,
+            "completed job %s: %d segments, lang=%s, fetch=%.1fs transcribe+stream=%.1fs total=%.1fs",
+            job_id, len(segments), language, fetched - started, transcribed - fetched,
             time.monotonic() - started,
         )
     except Exception as exc:  # noqa: BLE001 - reported back to the server, not swallowed

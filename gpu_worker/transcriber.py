@@ -13,6 +13,18 @@ class Segment:
     end: float
 
 
+def resolve_language(language: str | None) -> str | None:
+    """Map the worker's configured language to faster-whisper's `language` arg.
+
+    "auto" or empty means autodetect (None). Forcing a fixed language makes Whisper emit
+    that language's tokens for ANY audio — e.g. an English lecture transcribed under a
+    hard-coded "he" comes out as garbled Hebrew. Autodetect handles Hebrew, English, and
+    mixed lectures correctly."""
+    if not language or language.lower() == "auto":
+        return None
+    return language
+
+
 class Transcriber:
     def transcribe(self, audio_path: Path) -> Iterator[Segment]:
         raise NotImplementedError
@@ -71,6 +83,7 @@ class WhisperTranscriber(Transcriber):
         self._model = WhisperModel(model_name, device=device, compute_type=compute_type)
         self._language = language
         self._batch_size = batch_size
+        self.detected_language: str | None = None
         try:
             from faster_whisper import BatchedInferencePipeline
 
@@ -79,17 +92,21 @@ class WhisperTranscriber(Transcriber):
             self._batched = None
 
     def transcribe(self, audio_path: Path) -> Iterator[Segment]:
+        language = resolve_language(self._language)
         if self._batched is not None and self._batch_size > 1:
-            segments, _info = self._batched.transcribe(
+            segments, info = self._batched.transcribe(
                 str(audio_path),
-                language=self._language,
+                language=language,
                 batch_size=self._batch_size,
                 vad_filter=True,
             )
         else:
-            segments, _info = self._model.transcribe(
-                str(audio_path), language=self._language, vad_filter=True
+            segments, info = self._model.transcribe(
+                str(audio_path), language=language, vad_filter=True
             )
+        # When language was autodetected, info.language is what Whisper actually picked —
+        # report that downstream instead of the literal "auto".
+        self.detected_language = getattr(info, "language", None) or language
         for seg in segments:
             yield Segment(text=seg.text.strip(), start=seg.start, end=seg.end)
 

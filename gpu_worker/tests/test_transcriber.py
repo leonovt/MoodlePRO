@@ -1,6 +1,6 @@
 import wave
 
-from transcriber import FakeTranscriber, Segment, build_srt
+from transcriber import FakeTranscriber, Segment, build_srt, resolve_language
 
 
 def _write_silent_wav(path, seconds: float, framerate: int = 16000) -> None:
@@ -38,6 +38,17 @@ def test_fake_transcriber_falls_back_to_default_length_without_a_readable_wav(tm
 
     segments = list(FakeTranscriber().transcribe(audio_path))
     assert len(segments) == 3
+
+
+def test_resolve_language_autodetects_for_auto_or_empty():
+    # "auto"/empty -> None so Whisper detects the language instead of forcing one.
+    assert resolve_language("auto") is None
+    assert resolve_language("AUTO") is None
+    assert resolve_language("") is None
+    assert resolve_language(None) is None
+    # An explicit language is passed through unchanged.
+    assert resolve_language("he") == "he"
+    assert resolve_language("en") == "en"
 
 
 def test_build_srt_formats_timestamps_and_text():
