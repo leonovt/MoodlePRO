@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import tempfile
+import time
 from pathlib import Path
 
 import httpx
@@ -10,6 +11,56 @@ from config import WorkerSettings, settings
 from transcriber import Transcriber, build_srt, get_transcriber
 
 logger = logging.getLogger(__name__)
+
+# How many segments to batch into a single POST. faster-whisper yields one short segment
+# at a time; posting each individually made the GPU idle on a round-trip per segment.
+SEGMENT_BATCH_SIZE = 25
+
+
+async def _transcribe_and_stream(
+    http_client: httpx.AsyncClient,
+    transcriber: Transcriber,
+    worker_settings: WorkerSettings,
+    job_id: str,
+    audio_path: Path,
+) -> list:
+    """Run the blocking GPU generator in a thread, feeding segments into a queue, while this
+    coroutine drains the queue and posts them in batches.
+
+    Previously this was serial: decode one segment on the GPU, block on its HTTPS POST,
+    decode the next — so the GPU sat idle during every round-trip. Now decoding (thread)
+    and posting (event loop) overlap, and segments go out SEGMENT_BATCH_SIZE at a time,
+    cutting the number of round-trips. The bounded queue gives backpressure so a slow
+    network can't let segments pile up in memory unboundedly."""
+    loop = asyncio.get_running_loop()
+    queue: asyncio.Queue = asyncio.Queue(maxsize=512)
+    _DONE = object()
+
+    def produce() -> None:
+        try:
+            for segment in transcriber.transcribe(audio_path):
+                asyncio.run_coroutine_threadsafe(queue.put(segment), loop).result()
+        finally:
+            asyncio.run_coroutine_threadsafe(queue.put(_DONE), loop).result()
+
+    producer = loop.run_in_executor(None, produce)
+
+    segments: list = []
+    batch: list = []
+    while True:
+        item = await queue.get()
+        if item is _DONE:
+            break
+        segments.append(item)
+        batch.append(item)
+        if len(batch) >= SEGMENT_BATCH_SIZE:
+            await client.post_segments_batch(http_client, worker_settings, job_id, batch)
+            batch = []
+    if batch:
+        await client.post_segments_batch(http_client, worker_settings, job_id, batch)
+
+    await producer  # re-raise any exception that happened inside the generator thread
+    return segments
 
 
 async def run_once(
@@ -27,21 +78,25 @@ async def run_once(
         return False
 
     logger.info("picked up job %s", job_id)
+    started = time.monotonic()
     try:
         with tempfile.TemporaryDirectory() as tmp:
             audio_path = await client.fetch_audio(http_client, worker_settings, job_id, Path(tmp) / "audio.wav")
+            fetched = time.monotonic()
 
-            segments = []
-            for segment in transcriber.transcribe(audio_path):
-                segments.append(segment)
-                await client.post_segment(
-                    http_client, worker_settings, job_id, segment.text, segment.start, segment.end
-                )
+            segments = await _transcribe_and_stream(
+                http_client, transcriber, worker_settings, job_id, audio_path
+            )
+            transcribed = time.monotonic()
 
         text = " ".join(segment.text for segment in segments)
         srt = build_srt(segments)
         await client.post_complete(http_client, worker_settings, job_id, text, srt)
-        logger.info("completed job %s", job_id)
+        logger.info(
+            "completed job %s: %d segments, fetch=%.1fs transcribe+stream=%.1fs total=%.1fs",
+            job_id, len(segments), fetched - started, transcribed - fetched,
+            time.monotonic() - started,
+        )
     except Exception as exc:  # noqa: BLE001 - reported back to the server, not swallowed
         logger.exception("job %s failed", job_id)
         await client.post_fail(http_client, worker_settings, job_id, str(exc))

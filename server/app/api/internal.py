@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.security import require_internal_token
 from app.db.session import get_session
-from app.schemas import JobCompletePayload, WorkerSegment
+from app.schemas import JobCompletePayload, WorkerSegment, WorkerSegmentBatch
 from app.services import dedup, storage
 from app.services.jobs import get_job_or_404
 from app.services.queue import (
@@ -47,6 +47,20 @@ async def publish_job_segment(
     job's Redis channel so the browser's WebSocket receives it live."""
     await publish_segment(redis, job_id, payload.text, payload.start, payload.end)
     return {"status": "ok"}
+
+
+@router.post("/jobs/{job_id}/segments/batch")
+async def publish_job_segments(
+    job_id: str,
+    payload: WorkerSegmentBatch,
+    redis: Redis = Depends(get_redis),
+) -> dict:
+    """Batched version of /segments: the worker sends many segments in one request so its
+    GPU doesn't idle on a round-trip per segment. Each is still published to the job's
+    Redis channel in order, so the browser's WebSocket receives them just as before."""
+    for segment in payload.segments:
+        await publish_segment(redis, job_id, segment.text, segment.start, segment.end)
+    return {"status": "ok", "count": len(payload.segments)}
 
 
 @router.get("/audio/{job_id}")
