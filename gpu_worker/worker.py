@@ -71,7 +71,12 @@ async def main() -> None:
         heartbeat_task = asyncio.create_task(_heartbeat_loop(http_client, settings))
         try:
             while True:
-                await run_once(http_client, transcriber, settings)
+                try:
+                    await run_once(http_client, transcriber, settings)
+                except Exception:  # noqa: BLE001 - a transient server/network blip on claim
+                    # must NOT kill a long-lived worker; log and retry shortly.
+                    logger.exception("worker loop iteration failed; retrying")
+                    await asyncio.sleep(5)
         finally:
             heartbeat_task.cancel()
 
