@@ -194,6 +194,100 @@
   }
   .installed-note a { color: var(--orange-light); cursor: pointer; }
 
+  .savings-subtitle {
+    text-align: center;
+    color: var(--muted);
+    margin: -20px 0 28px;
+    font-size: 0.95rem;
+  }
+  .savings-panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    display: grid;
+    gap: 22px;
+  }
+  .savings-row { display: grid; gap: 8px; }
+  .savings-row-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 0.98rem;
+  }
+  .savings-row-head strong { color: var(--orange-light); font-size: 1.05rem; }
+  .savings-range {
+    width: 100%;
+    height: 6px;
+    border-radius: 4px;
+    background: var(--border);
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .savings-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--orange-light), var(--orange-deep));
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(247,148,30,0.5);
+  }
+  .savings-range::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--orange-light), var(--orange-deep));
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(247,148,30,0.5);
+  }
+  .savings-result {
+    text-align: center;
+    padding: 18px 0 4px;
+    border-top: 1px dashed var(--border);
+  }
+  .savings-result-row {
+    display: flex;
+    justify-content: center;
+    gap: 28px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .savings-stat { text-align: center; }
+  .savings-stat .num {
+    display: block;
+    font-size: 2.1rem;
+    font-weight: 800;
+    background: linear-gradient(90deg, var(--orange-light), var(--orange));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .savings-stat .label { font-size: 0.85rem; color: var(--muted); }
+  .savings-compare {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    font-size: 0.95rem;
+    flex-wrap: wrap;
+  }
+  .savings-compare-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .savings-compare-row strong { font-size: 1.1rem; }
+  .savings-compare-row--tutor strong { color: var(--muted); text-decoration: line-through; }
+  .savings-compare-row--us strong { color: var(--orange-light); }
+  .savings-note {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.78rem;
+    margin-top: 4px;
+  }
+
   .reviews {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -228,8 +322,10 @@
       <img src="assets/logo.png" alt="לוגו MoodlePRO" class="logo" />
       <h1>MoodlePRO</h1>
       <p class="lede">
-        כתוביות ותמלול חיים בעברית ובאנגלית להרצאות במודל של אונ' בן-גוריון —
-        ישר בדפדפן, בלי להעלות כלום ובלי לחכות.
+        כתוביות, תמלול וכלי AI חיים להרצאות במודל של אונ' בן-גוריון —
+        חוסכים לכם שעות של לימוד בכל סמסטר, שוות אלפי שקלים בשיעורים פרטיים.
+        <br>
+        <b>והכל בחינם, לחלוטין.</b>
       </p>
       <div id="moodlepro-cta">
         <a class="cta" href="moodlepro-extension.zip" download>⬇️ הורידו את MoodlePRO</a>
@@ -250,7 +346,50 @@
         <li>🇮🇱🇬🇧 <b>תמלול בעברית ובאנגלית</b> אוטומטית</li>
         <li>⬇️ <b>הורדת התמלול</b> כקובץ <code>.txt</code> או <code>.srt</code></li>
         <li>⚡ <b>הרצאות שכבר תומללו</b> נטענות מיד מהמטמון</li>
+        <li>🧠 <b>חידון AI</b> נוצר אוטומטית מכל הרצאה, מצגת או מטלה</li>
+        <li>📝 <b>סיכום AI</b> של כל חומר הקורס — בלחיצה אחת</li>
+        <li>🧩 <b>פתרון מטלות עם AI</b>, עם חיפוש חי באינטרנט למקורות</li>
+        <li>🤝 <b>ביקורת + הזמנת חבר/ה</b> = הרצאות חינמיות נוספות</li>
       </ul>
+    </section>
+
+    <section>
+      <h2>כמה זמן (וכסף) זה חוסך לכם?</h2>
+      <p class="savings-subtitle">הזיזו את הסליידרים לפי הסמסטר שלכם</p>
+      <div class="savings-panel">
+        <div class="savings-row">
+          <div class="savings-row-head">
+            <span>שעות הרצאות מוקלטות בשבוע</span>
+            <strong id="savings-hours-label">10 שעות</strong>
+          </div>
+          <input class="savings-range" id="savings-hours" type="range" min="2" max="20" step="1" value="10" aria-label="שעות הרצאות בשבוע">
+        </div>
+        <div class="savings-row">
+          <div class="savings-row-head">
+            <span>מחיר שעת שיעור פרטי</span>
+            <strong id="savings-rate-label">₪150</strong>
+          </div>
+          <input class="savings-range" id="savings-rate" type="range" min="50" max="300" step="10" value="150" aria-label="מחיר שעת שיעור פרטי">
+        </div>
+
+        <div class="savings-result" aria-live="polite">
+          <div class="savings-result-row">
+            <div class="savings-stat">
+              <span class="num" id="savings-hours-week">3</span>
+              <span class="label">שעות נחסכות בשבוע</span>
+            </div>
+            <div class="savings-stat">
+              <span class="num" id="savings-hours-semester">42</span>
+              <span class="label">שעות נחסכות בסמסטר</span>
+            </div>
+          </div>
+          <div class="savings-compare">
+            <span class="savings-compare-row savings-compare-row--tutor">שווה ערך בשיעורים פרטיים: <strong id="savings-money">₪6,300</strong></span>
+            <span class="savings-compare-row savings-compare-row--us">עם MoodlePRO: <strong>₪0</strong></span>
+          </div>
+        </div>
+      </div>
+      <p class="savings-note">*הערכה בלבד — לפי כ-30% זמן שנחסך מאי-עצירה/חזרה על קטעים, סיכומי AI וחידוני תרגול, וסמסטר של 14 שבועות.</p>
     </section>
 
     <section id="moodlepro-install-section">
@@ -346,6 +485,41 @@
   </div>
 
   <script>
+    var SAVED_FRACTION = 0.3; // share of lecture-watching time saved (no rewinding/pausing + AI summaries/quizzes)
+    var SEMESTER_WEEKS = 14;
+
+    var hoursSlider = document.getElementById("savings-hours");
+    var rateSlider = document.getElementById("savings-rate");
+    var hoursLabel = document.getElementById("savings-hours-label");
+    var rateLabel = document.getElementById("savings-rate-label");
+    var hoursWeekOut = document.getElementById("savings-hours-week");
+    var hoursSemesterOut = document.getElementById("savings-hours-semester");
+    var moneyOut = document.getElementById("savings-money");
+
+    function formatIls(n) {
+      return "₪" + Math.round(n).toLocaleString("he-IL");
+    }
+
+    function recalcSavings() {
+      var lectureHours = Number(hoursSlider.value);
+      var rate = Number(rateSlider.value);
+      var hoursPerWeek = lectureHours * SAVED_FRACTION;
+      var hoursPerSemester = hoursPerWeek * SEMESTER_WEEKS;
+      var money = hoursPerSemester * rate;
+
+      hoursLabel.textContent = lectureHours + " שעות";
+      rateLabel.textContent = formatIls(rate);
+      hoursWeekOut.textContent = (Math.round(hoursPerWeek * 10) / 10).toLocaleString("he-IL");
+      hoursSemesterOut.textContent = Math.round(hoursPerSemester).toLocaleString("he-IL");
+      moneyOut.textContent = formatIls(money);
+    }
+
+    if (hoursSlider && rateSlider) {
+      hoursSlider.addEventListener("input", recalcSavings);
+      rateSlider.addEventListener("input", recalcSavings);
+      recalcSavings();
+    }
+
     var copyBtn = document.getElementById("moodlepro-copy-url");
     if (copyBtn) {
       copyBtn.addEventListener("click", function () {
