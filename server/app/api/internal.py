@@ -96,6 +96,7 @@ async def complete_job(
     await dedup.save_transcript(session, job.audio_hash, payload.text, payload.srt, payload.language)
     job.status = "completed"
     job.provider = "cluster"  # this endpoint is only called by the GPU worker
+    job.error = None  # clear any stale error from a racing fallback that lost
     await session.commit()
 
     await publish_completed(redis, job_id, payload.text)
