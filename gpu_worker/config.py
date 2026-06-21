@@ -25,10 +25,11 @@ class WorkerSettings(BaseSettings):
     # "auto" autodetects per lecture (Hebrew, English, or mixed). Pin to "he"/"en" only to
     # force a language. Forcing the wrong one garbles output (English read as Hebrew).
     language: str = "auto"
-    # Audio transfer format requested from the server. "opus" fetches a ~13x smaller
-    # compressed copy (the WAV transfer dominated wall-clock on long lectures); "wav"
-    # fetches raw PCM. faster-whisper reads either via ffmpeg.
-    audio_format: str = "opus"
+    # Audio transfer format requested from the server. "wav" fetches raw PCM. "opus"
+    # fetches a ~13x smaller copy BUT the server transcodes on demand — only a win if the
+    # server has spare CPU. On the CPU-weak Oracle Always-Free VM the encode costs more
+    # than the raw transfer it saves, so default to "wav". faster-whisper reads either.
+    audio_format: str = "wav"
     # Batched inference parallelizes chunks for a big speedup (2-4x) over sequential
     # decoding; VAD skips silence. batch_size trades VRAM for speed — 16 fits the turbo
     # model on a 24GB card comfortably. Set to 1 to effectively disable batching.
