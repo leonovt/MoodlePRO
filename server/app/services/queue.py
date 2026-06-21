@@ -2,6 +2,7 @@ import json
 from collections.abc import AsyncIterator
 
 from redis.asyncio import Redis
+from redis.exceptions import TimeoutError as RedisTimeoutError
 
 JOB_QUEUE_KEY = "queue:jobs"
 
@@ -29,7 +30,13 @@ async def enqueue_job(redis: Redis, job_id: str) -> None:
 
 
 async def dequeue_job(redis: Redis, timeout: int = 5) -> str | None:
-    result = await redis.blpop([JOB_QUEUE_KEY], timeout=timeout)
+    # redis-py's async client races its own socket read timeout against the server-side
+    # BLPOP timeout; on an empty queue it sometimes raises TimeoutError instead of
+    # returning None. Both mean "nothing to claim right now" — never a 500 to the worker.
+    try:
+        result = await redis.blpop([JOB_QUEUE_KEY], timeout=timeout)
+    except RedisTimeoutError:
+        return None
     if result is None:
         return None
     _, job_id = result

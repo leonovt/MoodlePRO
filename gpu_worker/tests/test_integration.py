@@ -29,6 +29,22 @@ def fake_server_pipeline(monkeypatch):
     monkeypatch.setattr(audio_extract, "extract_audio", fake_extract)
 
 
+async def test_claim_on_empty_queue_returns_no_job_not_500(fake_redis):
+    """An idle worker long-polls /internal/jobs/claim with nothing queued; the BLPOP times
+    out and must come back as 'no job' (200), never a 500 that would crash the worker."""
+    await fake_redis.delete("queue:jobs")
+    async with app.router.lifespan_context(app):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as server_client:
+            resp = await server_client.post(
+                "/internal/jobs/claim",
+                params={"timeout": 1},
+                headers={"Authorization": "Bearer test-internal-token"},
+            )
+            assert resp.status_code == 200
+            assert resp.json()["job_id"] is None
+
+
 async def test_worker_processes_a_real_job_end_to_end(fake_redis):
     """Server creates+queues a job; the (fake) GPU worker pops it, fetches audio over HTTP,
     transcribes, and reports completion back — exactly the real cross-machine contract,
