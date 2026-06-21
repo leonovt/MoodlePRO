@@ -15,6 +15,13 @@ class Settings(BaseSettings):
     # grants review_bonus_lectures more. user_id-less requests are not gated.
     base_lecture_quota: int = 5
     review_bonus_lectures: int = 5
+    # Naming who invited you when leaving a review grants both accounts a referral
+    # bonus (honor system, matched by self-reported Moodle username).
+    referral_bonus_lectures: int = 3
+
+    # Self-reported Moodle usernames (case-insensitive, honor system — same trust level
+    # as the rest of the quota system) that never get quota-gated at all.
+    unlimited_usernames: set[str] = {"leonovt", "prives"}
 
     # Master switch for the cluster GPU worker path. When False, the server never
     # enqueues to the cluster and never waits for a worker heartbeat — every job goes

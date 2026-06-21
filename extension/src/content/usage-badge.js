@@ -14,8 +14,14 @@ export function createUsageBadge(doc, toolbar) {
   return {
     element: badge,
     update(usage) {
+      if (!usage) return;
+      if (usage.unlimited) {
+        badge.textContent = "🎓 ∞";
+        badge.style.display = "inline-block";
+        return;
+      }
       // Best-effort UI: ignore malformed payloads rather than render "NaN".
-      if (!usage || typeof usage.limit !== "number" || typeof usage.used !== "number") return;
+      if (typeof usage.limit !== "number" || typeof usage.used !== "number") return;
       const remaining = Math.max(0, usage.limit - usage.used);
       badge.textContent =
         remaining > 0 ? `🎓 נותרו לך ${remaining} הרצאות` : "🎓 נגמרו ההרצאות החינמיות";

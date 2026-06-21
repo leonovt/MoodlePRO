@@ -26,6 +26,17 @@ class UsageResponse(BaseModel):
     used: int
     limit: int
     reviewed: bool
+    referral_credits: int = 0
+    unlimited: bool = False
+
+
+class ReviewClaimRequest(BaseModel):
+    username: Optional[str] = None  # self-reported, shown to others as this account's referral handle
+    referred_by: Optional[str] = None  # username of whoever invited this user, if any
+
+
+class UsernameRequest(BaseModel):
+    username: str
 
 
 class JobResponse(BaseModel):

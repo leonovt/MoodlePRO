@@ -58,13 +58,16 @@ class GeminiSummarizer(SummarizerProvider):
             parts.append(types.Part.from_bytes(data=base64.b64decode(file_base64), mime_type=mime_type or "application/pdf"))
         parts.append(types.Part.from_text(text=text or "Summarize this document."))
 
+        tools = None
         if mode == "solve":
             system_instruction = (
                 "You solve university assignments for students. Work through the assignment in the "
                 "provided material step by step and write out the full solution/answer, not a summary "
-                "of the questions. Write the solution in the same language as the source text (Hebrew "
-                "source stays Hebrew)."
+                "of the questions. Use Google Search when you need up-to-date facts, formulas, "
+                "definitions, or worked examples beyond what's in the provided material. Write the "
+                "solution in the same language as the source text (Hebrew source stays Hebrew)."
             )
+            tools = [types.Tool(google_search=types.GoogleSearch())]
         else:
             system_instruction = (
                 "You summarize university course material (lecture transcripts, assignments, slides) "
@@ -76,7 +79,7 @@ class GeminiSummarizer(SummarizerProvider):
         response = await get_client().aio.models.generate_content(
             model=STRONG_MODEL if mode == "solve" else MODEL,
             contents=parts,
-            config=types.GenerateContentConfig(system_instruction=system_instruction),
+            config=types.GenerateContentConfig(system_instruction=system_instruction, tools=tools),
         )
         return response.text
 

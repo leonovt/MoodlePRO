@@ -27,11 +27,23 @@ export function createApiClient(baseUrl) {
       return res.json();
     },
 
-    async claimReview(userId) {
+    async claimReview(userId, { username, referredBy } = {}) {
       const res = await fetch(`${httpBase}/users/${encodeURIComponent(userId)}/review`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: username || null, referred_by: referredBy || null }),
       });
       if (!res.ok) throw new Error(`claimReview failed: ${res.status}`);
+      return res.json();
+    },
+
+    async setUsername(userId, username) {
+      const res = await fetch(`${httpBase}/users/${encodeURIComponent(userId)}/username`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username }),
+      });
+      if (!res.ok) throw new Error(`setUsername failed: ${res.status}`);
       return res.json();
     },
 

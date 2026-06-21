@@ -1,5 +1,11 @@
-import { describe, expect, it } from "vitest";
-import { gradeAdvice } from "../src/content/result-modal.js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createResultModal, gradeAdvice } from "../src/content/result-modal.js";
+
+function stubDownloadApis() {
+  URL.createObjectURL = vi.fn(() => "blob:mock-url");
+  URL.revokeObjectURL = vi.fn();
+  HTMLAnchorElement.prototype.click = vi.fn();
+}
 
 describe("gradeAdvice", () => {
   it("reports a perfect score with no review topics", () => {
@@ -21,5 +27,47 @@ describe("gradeAdvice", () => {
     expect(advice).toContain("• a");
     expect(advice).toContain("• c");
     expect(advice).not.toContain("• d");
+  });
+});
+
+describe("createResultModal download button", () => {
+  beforeEach(() => {
+    document.body.innerHTML = "";
+    stubDownloadApis();
+  });
+
+  it("shows a download button alongside the summary that downloads it as summary.txt", () => {
+    const modal = createResultModal(document);
+    modal.showSummary("a great summary");
+
+    const downloadButton = Array.from(document.querySelectorAll("button")).find((b) =>
+      b.textContent.includes("Download")
+    );
+    expect(downloadButton).toBeDefined();
+
+    downloadButton.click();
+
+    expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+    const blob = URL.createObjectURL.mock.calls[0][0];
+    expect(blob.type).toBe("text/plain;charset=utf-8");
+    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(1);
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock-url");
+  });
+
+  it("shows a download button for the summary when rendering summary + quiz together", () => {
+    const modal = createResultModal(document);
+    modal.showSummaryAndQuiz("combined summary", [
+      { question: "Q?", options: ["a", "b"], correct_index: 0, explanation: "e" },
+    ]);
+
+    const downloadButton = Array.from(document.querySelectorAll("button")).find((b) =>
+      b.textContent.includes("Download")
+    );
+    expect(downloadButton).toBeDefined();
+
+    downloadButton.click();
+
+    expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(1);
   });
 });

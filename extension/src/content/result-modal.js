@@ -20,10 +20,36 @@ export function gradeAdvice(correct, total, missedTitles = []) {
   return { grade, advice };
 }
 
+/** Downloads `text` as a local .txt file with no server round-trip. */
+function downloadAsTextFile(doc, text, filename) {
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = doc.createElement("a");
+  link.href = url;
+  link.download = filename;
+  doc.body.appendChild(link);
+  link.click();
+  doc.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 /** Renders a dismissible fixed-position overlay for summaries and quizzes. */
 export function createResultModal(doc) {
   let backdrop = null;
   let box = null;
+
+  function createDownloadButton(text, filename) {
+    const downloadButton = doc.createElement("button");
+    downloadButton.textContent = "⬇ Download";
+    downloadButton.style.cssText = [
+      "margin-top:12px", "padding:6px 12px", "border:1px solid " + COLORS.border,
+      "border-radius:6px", "background:" + COLORS.orange, "color:#fff !important",
+      "font-size:13px", "cursor:pointer",
+    ].join(";");
+    addHoverEffect(downloadButton, COLORS.orange, COLORS.orangeDeep);
+    downloadButton.addEventListener("click", () => downloadAsTextFile(doc, text, filename));
+    return downloadButton;
+  }
 
   function close() {
     const existing = doc.getElementById ? doc.getElementById("moodlepro-modal-backdrop") : null;
@@ -94,6 +120,7 @@ export function createResultModal(doc) {
     p.style.cssText = "margin-top:8px;color:#111 !important;";
     renderRichText(doc, p, text);
     content.appendChild(p);
+    content.appendChild(createDownloadButton(text, "summary.txt"));
   }
 
   function renderQuizInto(content, questions) {
@@ -190,6 +217,7 @@ export function createResultModal(doc) {
     p.style.cssText = "margin-top:8px;";
     renderRichText(doc, p, summaryText);
     content.appendChild(p);
+    content.appendChild(createDownloadButton(summaryText, "summary.txt"));
     renderQuizInto(content, questions);
   }
 

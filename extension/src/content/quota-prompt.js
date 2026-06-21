@@ -38,14 +38,41 @@ export function showQuotaPrompt(doc, { onReviewed, onContinue, win = doc.default
 
   const msg = doc.createElement("div");
   msg.textContent = "השאירו ביקורת וקבלו 5 הרצאות נוספות 🎁";
-  msg.style.cssText = "font-size:13px;color:#444;margin-bottom:16px;";
+  msg.style.cssText = "font-size:13px;color:#444;margin-bottom:10px;";
   box.appendChild(msg);
+
+  const referralNote = doc.createElement("div");
+  referralNote.textContent = "🤝 הזמנתם חבר/ה? כל אחד מכם מקבל עוד 3 הרצאות נוספות!";
+  referralNote.style.cssText = "font-size:12.5px;color:" + COLORS.orangeDeep + ";margin-bottom:14px;font-weight:600;";
+  box.appendChild(referralNote);
+
+  const inputStyle = "display:block;width:100%;margin:4px 0;padding:8px;border:1px solid #ccc;border-radius:5px;font-size:13px;box-sizing:border-box;";
+
+  const usernameLabel = doc.createElement("label");
+  usernameLabel.textContent = "שם המשתמש שלך במודל (כדי שחברים יוכלו להזמין אתכם)";
+  usernameLabel.style.cssText = "display:block;font-size:11.5px;color:#666;text-align:right;margin-top:6px;";
+  box.appendChild(usernameLabel);
+  const usernameInput = doc.createElement("input");
+  usernameInput.type = "text";
+  usernameInput.placeholder = "שם המשתמש שלך, לדוגמה leonovt";
+  usernameInput.style.cssText = inputStyle;
+  box.appendChild(usernameInput);
+
+  const referredByLabel = doc.createElement("label");
+  referredByLabel.textContent = "מי הזמין אתכם? (אופציונלי)";
+  referredByLabel.style.cssText = "display:block;font-size:11.5px;color:#666;text-align:right;margin-top:6px;";
+  box.appendChild(referredByLabel);
+  const referredByInput = doc.createElement("input");
+  referredByInput.type = "text";
+  referredByInput.placeholder = "שם המשתמש של מי שהזמין אתכם";
+  referredByInput.style.cssText = inputStyle;
+  box.appendChild(referredByInput);
 
   const close = () => backdrop.remove();
 
   const reviewBtn = doc.createElement("button");
-  reviewBtn.textContent = "⭐ השאר ביקורת";
-  reviewBtn.style.cssText = "display:block;width:100%;margin:6px 0;padding:9px;border:none;border-radius:7px;background:" + COLORS.orange + ";color:#fff;font-weight:600;font-size:14px;cursor:pointer;transition:background .15s ease;";
+  reviewBtn.textContent = "⭐ השאר ביקורת וקבל 5 הרצאות בחינם";
+  reviewBtn.style.cssText = "display:block;width:100%;margin:14px 0 6px;padding:11px;border:none;border-radius:7px;background:" + COLORS.orange + ";color:#fff;font-weight:700;font-size:14px;cursor:pointer;transition:background .15s ease;box-shadow:0 2px 8px rgba(247,148,30,.4);";
   addHoverEffect(reviewBtn, COLORS.orange, COLORS.orangeDeep);
   reviewBtn.addEventListener("click", () => {
     if (win && win.open) win.open(REVIEW_URL, "_blank", "noopener,noreferrer");
@@ -59,17 +86,25 @@ export function showQuotaPrompt(doc, { onReviewed, onContinue, win = doc.default
     confirmBtn.disabled = true;
     reviewBtn.disabled = true;
     confirmBtn.textContent = "מעדכן…";
+    const referredBy = referredByInput.value.trim() || null;
+    let result;
     try {
-      if (onReviewed) await onReviewed();
+      if (onReviewed) {
+        result = await onReviewed({ username: usernameInput.value.trim() || null, referredBy });
+      }
     } catch {
       confirmBtn.disabled = false;
+      reviewBtn.disabled = false;
       confirmBtn.textContent = "כבר השארתי ביקורת";
       return;
     }
     // Clear success feedback, then close and continue with the (now-unblocked) transcription.
     box.textContent = "";
     const ok = doc.createElement("div");
-    ok.textContent = "🎁 קיבלת 5 הרצאות נוספות! מתחילים…";
+    ok.textContent =
+      referredBy && result && result.referral_credits > 0
+        ? "🎁 קיבלת 5 הרצאות נוספות + 3 הרצאות הפניה! מתחילים…"
+        : "🎁 קיבלת 5 הרצאות נוספות! מתחילים…";
     ok.style.cssText = "font-weight:bold;font-size:15px;color:#2e7d32;direction:rtl;";
     box.appendChild(ok);
     const scheduler = win && win.setTimeout ? win.setTimeout.bind(win) : setTimeout;

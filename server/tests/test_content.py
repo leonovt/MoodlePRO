@@ -71,6 +71,32 @@ async def test_gemini_summarizer_uses_strong_model_for_solve_mode(monkeypatch):
     assert captured["model"] == MODEL
 
 
+async def test_gemini_summarizer_grounds_solve_mode_with_google_search(monkeypatch):
+    captured = {}
+
+    class FakeResponse:
+        text = "solved"
+
+    class FakeModels:
+        async def generate_content(self, model, contents, config):
+            captured["tools"] = config.tools
+            return FakeResponse()
+
+    class FakeAio:
+        models = FakeModels()
+
+    class FakeClient:
+        aio = FakeAio()
+
+    monkeypatch.setattr(summarizer_module, "get_client", lambda: FakeClient())
+
+    await GeminiSummarizer().summarize("solve this", mode="solve")
+    assert captured["tools"] is not None and len(captured["tools"]) == 1
+
+    await GeminiSummarizer().summarize("summarize this", mode="casual")
+    assert captured["tools"] is None
+
+
 async def test_fake_quiz_generator_shape_and_correct_index_range():
     questions = await FakeQuizGenerator().generate_quiz("some text", num_questions=5)
     assert len(questions) == 5

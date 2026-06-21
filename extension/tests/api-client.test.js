@@ -42,6 +42,21 @@ describe("createApiClient", () => {
     );
   });
 
+  it("registers a username", async () => {
+    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ used: 0, limit: 5, reviewed: false, unlimited: true }) });
+
+    const result = await api.setUsername("moodle:7", "leonovt");
+
+    expect(result).toEqual({ used: 0, limit: 5, reviewed: false, unlimited: true });
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://localhost:8000/users/moodle%3A7/username",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ username: "leonovt" }),
+      })
+    );
+  });
+
   it("builds txt/srt/ws urls relative to the configured server", () => {
     expect(api.txtUrl("job-1")).toBe("http://localhost:8000/jobs/job-1/txt");
     expect(api.srtUrl("job-1")).toBe("http://localhost:8000/jobs/job-1/srt");

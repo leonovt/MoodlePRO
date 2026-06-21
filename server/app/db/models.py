@@ -62,12 +62,21 @@ class UserLecture(Base):
 
 
 class UserReward(Base):
-    """Tracks whether a user has claimed the review bonus (honor system)."""
+    """Tracks whether a user has claimed the review bonus (honor system), plus the
+    self-reported referral identity used to credit invite bonuses."""
 
     __tablename__ = "user_rewards"
 
     user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     reviewed: Mapped[bool] = mapped_column(default=False)
+    # Self-reported Moodle username (honor system, not verified) — lets other users
+    # name this account as their referrer. Indexed because referrals look it up.
+    username: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    # The username this account entered as its own referrer, set once.
+    referred_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # Bonus lectures earned via referrals: +referral_bonus_lectures once as a referee,
+    # and +referral_bonus_lectures each time someone else names this account.
+    referral_credits: Mapped[int] = mapped_column(default=0)
 
 
 class VideoHash(Base):

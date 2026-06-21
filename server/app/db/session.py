@@ -30,6 +30,18 @@ async def init_db() -> None:
             await conn.exec_driver_sql(
                 "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS provider VARCHAR(16)"
             )
+            await conn.exec_driver_sql(
+                "ALTER TABLE user_rewards ADD COLUMN IF NOT EXISTS username VARCHAR(128)"
+            )
+            await conn.exec_driver_sql(
+                "ALTER TABLE user_rewards ADD COLUMN IF NOT EXISTS referred_by VARCHAR(128)"
+            )
+            await conn.exec_driver_sql(
+                "ALTER TABLE user_rewards ADD COLUMN IF NOT EXISTS referral_credits INTEGER NOT NULL DEFAULT 0"
+            )
+            await conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_user_rewards_username ON user_rewards (username)"
+            )
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:

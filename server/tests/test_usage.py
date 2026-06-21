@@ -83,7 +83,7 @@ async def test_review_grants_bonus(client, monkeypatch):
 
     review = await client.post("/users/user-C/review")
     assert review.status_code == 200
-    assert review.json() == {"used": 2, "limit": 4, "reviewed": True}
+    assert review.json() == {"used": 2, "limit": 4, "reviewed": True, "referral_credits": 0, "unlimited": False}
 
     # Reviewing again must NOT stack — the bonus is granted only once.
     again = await client.post("/users/user-C/review")
@@ -118,4 +118,85 @@ async def test_usage_endpoint_and_ungated_without_user(client, monkeypatch):
     assert resp.status_code == 200
 
     usage = await client.get("/users/fresh-user/usage")
-    assert usage.json() == {"used": 0, "limit": settings.base_lecture_quota, "reviewed": False}
+    assert usage.json() == {
+        "used": 0,
+        "limit": settings.base_lecture_quota,
+        "reviewed": False,
+        "referral_credits": 0,
+        "unlimited": False,
+    }
+
+
+async def test_referral_bonus_credits_both_accounts(client, monkeypatch):
+    monkeypatch.setattr(settings, "base_lecture_quota", 5)
+    monkeypatch.setattr(settings, "review_bonus_lectures", 5)
+    monkeypatch.setattr(settings, "referral_bonus_lectures", 3)
+
+    # The inviter reviews first and registers their username.
+    inviter = await client.post("/users/user-inviter/review", json={"username": "leonovt"})
+    assert inviter.json()["limit"] == 10  # base 5 + review bonus 5
+
+    # The invitee reviews and names the inviter — both get +3.
+    invitee = await client.post(
+        "/users/user-invitee/review", json={"username": "newbie", "referred_by": "leonovt"}
+    )
+    assert invitee.json()["limit"] == 13  # base 5 + review bonus 5 + referral 3
+
+    inviter_usage = (await client.get("/users/user-inviter/usage")).json()
+    assert inviter_usage["limit"] == 13  # +3 referral credit for being named
+
+
+async def test_referral_bonus_is_claimed_once(client, monkeypatch):
+    monkeypatch.setattr(settings, "referral_bonus_lectures", 3)
+    await client.post("/users/ref-inviter/review", json={"username": "ref-host"})
+
+    first = await client.post(
+        "/users/ref-invitee/review", json={"username": "ref-guest", "referred_by": "ref-host"}
+    )
+    second = await client.post(
+        "/users/ref-invitee/review", json={"username": "ref-guest", "referred_by": "ref-host"}
+    )
+    assert first.json()["referral_credits"] == second.json()["referral_credits"] == 3
+
+
+async def test_self_referral_is_ignored(client, monkeypatch):
+    monkeypatch.setattr(settings, "referral_bonus_lectures", 3)
+    resp = await client.post(
+        "/users/self-ref-user/review", json={"username": "loopy", "referred_by": "loopy"}
+    )
+    assert resp.json()["referral_credits"] == 0
+
+
+async def test_allowlisted_username_unlocks_unlimited_quota(client, monkeypatch):
+    monkeypatch.setattr(settings, "base_lecture_quota", 1)
+    monkeypatch.setattr(settings, "unlimited_usernames", {"leonovt"})
+    counter = {"n": 0}
+    monkeypatch.setattr(audio_extract, "hash_audio", lambda _p: (counter.__setitem__("n", counter["n"] + 1), f"h{counter['n']}")[1])
+
+    register = await client.post("/users/user-unlim/username", json={"username": "leonovt"})
+    assert register.status_code == 200
+    assert register.json()["unlimited"] is True
+
+    for i in range(5):
+        resp = await _post_job(client, "user-unlim", f"lec-{i}")
+        assert resp.status_code == 200  # never quota-gated, well past base_lecture_quota=1
+
+
+async def test_unregistered_username_changes_nothing(client, monkeypatch):
+    monkeypatch.setattr(settings, "base_lecture_quota", 1)
+    monkeypatch.setattr(settings, "unlimited_usernames", {"leonovt"})
+    monkeypatch.setattr(audio_extract, "hash_audio", lambda _p: "h-not-allowlisted")
+
+    register = await client.post("/users/user-plain/username", json={"username": "someone-else"})
+    assert register.json()["unlimited"] is False
+
+    assert (await _post_job(client, "user-plain", "lec-0")).status_code == 200
+    assert (await _post_job(client, "user-plain", "lec-1")).status_code == 403
+
+
+async def test_registering_username_does_not_grant_review_bonus(client, monkeypatch):
+    resp = await client.post("/users/user-named/username", json={"username": "someone"})
+    body = resp.json()
+    assert body["reviewed"] is False
+    assert body["referral_credits"] == 0
+    assert body["limit"] == settings.base_lecture_quota
