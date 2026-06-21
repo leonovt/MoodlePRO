@@ -144,11 +144,19 @@ export async function main(doc = document, serverBaseUrl = DEFAULT_SERVER_BASE_U
           status.hide(); // first words arrived
           sidebar.addSegment(event);
           overlay.addSegment(event);
+        } else if (event.type === "completed") {
+          status.hide(); // done — covers jobs that finish without live segment events
         } else if (event.type === "failed") {
           status.showError("התמלול נכשל. נסו שוב מאוחר יותר.");
         }
       });
-      fallbackForMissedSegments(api, job.id, sidebar, overlay).catch(() => {});
+      // If segments arrive via the HTTP fallback poller instead of the WebSocket, the
+      // socket's hide() never fires — so hide the banner once the backfill has segments.
+      fallbackForMissedSegments(api, job.id, sidebar, overlay)
+        .then(() => {
+          if (sidebar.segments.length > 0) status.hide();
+        })
+        .catch(() => {});
 
       context = { player, api, job, socket, sidebar, overlay, status };
       return context;

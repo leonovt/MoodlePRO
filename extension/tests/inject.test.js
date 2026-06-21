@@ -101,6 +101,29 @@ describe("inject main()", () => {
     expect(status.textContent).toContain("על חשבון הבית");
   });
 
+  it("hides the loading banner when segments arrive via the HTTP fallback (no socket segment)", async () => {
+    global.fetch = vi.fn().mockImplementation((url) => {
+      const u = String(url);
+      if (u.includes("/srt")) return Promise.resolve({ ok: true, text: async () => "" });
+      if (u.endsWith("/jobs")) {
+        return Promise.resolve({ ok: true, json: async () => ({ id: "job-1", status: "queued" }) });
+      }
+      // getJob poll → completed, so the fallback backfills the transcript
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ id: "job-1", status: "completed", text: "שלום" }),
+      });
+    });
+
+    const result = await main(document, "http://localhost:8000");
+    await result.start();
+
+    // No socket "segment" event is ever emitted — only the fallback poller fills segments.
+    await vi.waitFor(() => {
+      expect(document.getElementById("moodlepro-status").style.display).toBe("none");
+    });
+  });
+
   it("shows an error and re-enables the start button when starting fails", async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error("network down"));
     const result = await main(document, "http://localhost:8000");
