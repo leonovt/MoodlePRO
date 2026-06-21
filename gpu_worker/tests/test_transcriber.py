@@ -1,6 +1,6 @@
 import wave
 
-from transcriber import FakeTranscriber, Segment, build_srt, resolve_language
+from transcriber import FakeTranscriber, Segment, build_srt, resolve_language, select_model_key
 
 
 def _write_silent_wav(path, seconds: float, framerate: int = 16000) -> None:
@@ -49,6 +49,17 @@ def test_resolve_language_autodetects_for_auto_or_empty():
     # An explicit language is passed through unchanged.
     assert resolve_language("he") == "he"
     assert resolve_language("en") == "en"
+
+
+def test_select_model_key_routes_hebrew_to_primary_others_to_secondary():
+    # With a secondary (stock) model loaded: Hebrew -> ivrit primary, everything else -> stock.
+    assert select_model_key("he", has_secondary=True) == "primary"
+    assert select_model_key("en", has_secondary=True) == "secondary"
+    assert select_model_key("ru", has_secondary=True) == "secondary"
+    assert select_model_key(None, has_secondary=True) == "secondary"
+    # No secondary loaded -> always the primary (legacy single-model behavior).
+    assert select_model_key("en", has_secondary=False) == "primary"
+    assert select_model_key("he", has_secondary=False) == "primary"
 
 
 def test_build_srt_formats_timestamps_and_text():
