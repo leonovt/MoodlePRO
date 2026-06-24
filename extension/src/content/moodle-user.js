@@ -20,6 +20,18 @@ export function getMoodleUserId(doc) {
     if (match) return `moodle:${match[1]}`;
   }
 
+  // BGU's user-menu "profile" link is just /user/profile.php (no id), so the menu check
+  // above misses. The notification bell carries the logged-in user's own id on every page
+  // and is unambiguously the current user — use it as the primary fallback.
+  const notif = doc.querySelector("#nav-notification-popover-container[data-userid]");
+  const notifId = notif && notif.getAttribute("data-userid");
+  if (notifId && /^\d+$/.test(notifId)) return `moodle:${notifId}`;
+
+  // Footer "you are logged in as: <name>" link — also unambiguously the current user.
+  const footerLink = doc.querySelector('.logininfo a[href*="/user/profile.php?id="]');
+  const footerMatch = footerLink && (footerLink.getAttribute("href") || "").match(/[?&]id=(\d+)/);
+  if (footerMatch) return `moodle:${footerMatch[1]}`;
+
   const nameEl = doc.querySelector(
     '[data-region="user-menu"] .usertext, .userbutton .usertext, .usermenu .usertext'
   );
