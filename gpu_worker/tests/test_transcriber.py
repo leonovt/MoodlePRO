@@ -1,6 +1,14 @@
 import wave
 
-from transcriber import FakeTranscriber, Segment, build_srt, resolve_language, select_model_key
+from transcriber import (
+    FakeTranscriber,
+    Segment,
+    build_srt,
+    plan_detection_windows,
+    resolve_language,
+    select_model_key,
+    vote_language,
+)
 
 
 def _write_silent_wav(path, seconds: float, framerate: int = 16000) -> None:
@@ -60,6 +68,48 @@ def test_select_model_key_routes_hebrew_to_primary_others_to_secondary():
     # No secondary loaded -> always the primary (legacy single-model behavior).
     assert select_model_key("en", has_secondary=False) == "primary"
     assert select_model_key("he", has_secondary=False) == "primary"
+
+
+def test_plan_detection_windows_spreads_across_audio():
+    # 100s of 16kHz audio, 30s windows at fractions 0.1..0.9 -> several in-bounds ranges.
+    total = 100 * 16000
+    window = 30 * 16000
+    windows = plan_detection_windows(total, window)
+    assert len(windows) >= 2
+    # Every window stays within [0, total] and has the requested length.
+    for start, end in windows:
+        assert 0 <= start < end <= total
+        assert end - start == window
+    # Spread out: not all starting at 0.
+    assert len({start for start, _ in windows}) == len(windows)
+
+
+def test_plan_detection_windows_returns_empty_when_shorter_than_one_window():
+    # Audio shorter than a single window -> caller should detect on the whole clip.
+    assert plan_detection_windows(10 * 16000, 30 * 16000) == []
+
+
+def test_plan_detection_windows_dedupes_collapsed_starts():
+    # On short-ish audio several fractions clamp to the same start; don't detect it twice.
+    total = 31 * 16000
+    window = 30 * 16000
+    windows = plan_detection_windows(total, window)
+    starts = [start for start, _ in windows]
+    assert len(starts) == len(set(starts))
+
+
+def test_vote_language_weighs_confidence_not_just_count():
+    # One confident English window beats two low-confidence Hebrew windows.
+    assert vote_language([("en", 0.95), ("he", 0.30), ("he", 0.30)]) == "en"
+    # Clear Hebrew majority.
+    assert vote_language([("he", 0.9), ("he", 0.8), ("en", 0.4)]) == "he"
+
+
+def test_vote_language_ignores_empty_detections():
+    assert vote_language([]) is None
+    assert vote_language([(None, 0.9), ("", 0.8)]) is None
+    # None/empty entries are skipped but real ones still count.
+    assert vote_language([(None, 0.9), ("he", 0.5)]) == "he"
 
 
 def test_build_srt_formats_timestamps_and_text():
