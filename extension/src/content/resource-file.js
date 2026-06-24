@@ -17,12 +17,27 @@ function findEmbeddedFileUrl(doc, baseUrl) {
   return raw ? new URL(raw, baseUrl).href : null;
 }
 
+/** Pull the original file name out of a URL: last path segment, %xx-decoded, query stripped. */
+export function filenameFromUrl(url) {
+  try {
+    const path = new URL(url).pathname;
+    const last = path.split("/").filter(Boolean).pop() || "";
+    return decodeURIComponent(last);
+  } catch {
+    return "";
+  }
+}
+
 export async function resolveResourceFile(href) {
   const res = await fetch(href, { credentials: "same-origin" });
   const contentType = res.headers.get("content-type") || "";
 
   if (isFileContentType(contentType)) {
-    return { buffer: await res.arrayBuffer(), mimeType: contentType.split(";")[0].trim() };
+    return {
+      buffer: await res.arrayBuffer(),
+      mimeType: contentType.split(";")[0].trim(),
+      filename: filenameFromUrl(res.url),
+    };
   }
 
   const doc = new DOMParser().parseFromString(await res.text(), "text/html");
@@ -31,7 +46,11 @@ export async function resolveResourceFile(href) {
 
   const fileRes = await fetch(fileUrl, { credentials: "same-origin" });
   const fileContentType = fileRes.headers.get("content-type") || "application/octet-stream";
-  return { buffer: await fileRes.arrayBuffer(), mimeType: fileContentType.split(";")[0].trim() };
+  return {
+    buffer: await fileRes.arrayBuffer(),
+    mimeType: fileContentType.split(";")[0].trim(),
+    filename: filenameFromUrl(fileUrl),
+  };
 }
 
 export function arrayBufferToBase64(buffer) {

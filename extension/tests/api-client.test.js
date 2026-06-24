@@ -29,6 +29,29 @@ describe("createApiClient", () => {
     await expect(api.createJob({ videoUrl: "https://x.mp4" })).rejects.toMatchObject({ status: 403 });
   });
 
+  it("purges the cache for a set of video ids", async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ deleted_transcripts: 2, deleted_mappings: 2, requested_ids: 3 }),
+    });
+
+    const result = await api.purgeCache("moodle:7", ["a", "b", "c"]);
+
+    expect(result.deleted_transcripts).toBe(2);
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://localhost:8000/cache/purge",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ user_id: "moodle:7", moodle_video_ids: ["a", "b", "c"] }),
+      })
+    );
+  });
+
+  it("throws with a .status when purge is not authorized (403)", async () => {
+    global.fetch.mockResolvedValue({ ok: false, status: 403 });
+    await expect(api.purgeCache("moodle:7", ["a"])).rejects.toMatchObject({ status: 403 });
+  });
+
   it("gets usage and claims the review bonus", async () => {
     global.fetch.mockResolvedValue({ ok: true, json: async () => ({ used: 5, limit: 10, reviewed: true }) });
 

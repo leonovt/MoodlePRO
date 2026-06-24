@@ -39,7 +39,7 @@ function sanitizeFilename(text) {
   return cleaned || "lecture";
 }
 
-async function resolvePlayerForItem(item) {
+export async function resolvePlayerForItem(item) {
   if (!item.href) return null;
   const res = await fetch(item.href, { credentials: "same-origin" });
   const html = await res.text();
@@ -47,7 +47,7 @@ async function resolvePlayerForItem(item) {
   return findBguVideoPlayer(itemDoc);
 }
 
-async function waitForCompletion(api, jobId, attempts = 30, delayMs = 2000) {
+export async function waitForCompletion(api, jobId, attempts = 30, delayMs = 2000) {
   for (let i = 0; i < attempts; i++) {
     const job = await api.getJob(jobId);
     if (job.status === "completed" || job.status === "failed") return job;

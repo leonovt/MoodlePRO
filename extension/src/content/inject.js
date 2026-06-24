@@ -4,6 +4,7 @@ import { attachChapters } from "./chapters.js";
 import { replaceBguLogo } from "./brand-logo.js";
 import { createCaptionOverlay } from "./caption-overlay.js";
 import { injectCourseItemButtons } from "./course-items.js";
+import { injectCourseVipTools } from "./course-vip-tools.js";
 import { findBguVideoPlayer } from "./detect-player.js";
 import { injectFeedbackButton } from "./feedback.js";
 import { getMoodleUserId } from "./moodle-user.js";
@@ -111,6 +112,8 @@ export async function main(doc = document, serverBaseUrl = DEFAULT_SERVER_BASE_U
   if (!player) {
     if (doc.querySelector('li[data-for="cmitem"]')) {
       injectCourseItemButtons(doc, serverBaseUrl);
+      // VIP-only course export tools; async usage check, never blocks the page.
+      injectCourseVipTools(doc, serverBaseUrl, { api, userId }).catch(() => {});
       return null;
     }
     return null;

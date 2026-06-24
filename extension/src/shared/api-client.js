@@ -37,6 +37,20 @@ export function createApiClient(baseUrl) {
       return res.json();
     },
 
+    async purgeCache(userId, moodleVideoIds) {
+      const res = await fetch(`${httpBase}/cache/purge`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, moodle_video_ids: moodleVideoIds }),
+      });
+      if (!res.ok) {
+        const error = new Error(`purgeCache failed: ${res.status}`);
+        error.status = res.status;
+        throw error;
+      }
+      return res.json();
+    },
+
     async getJob(jobId) {
       const res = await fetch(`${httpBase}/jobs/${jobId}`);
       if (!res.ok) {
