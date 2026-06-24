@@ -1,13 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import PlainTextResponse
 from redis.asyncio import Redis
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.db.models import Job, VideoHash
+from app.db.models import Job, Transcript, UserReward, VideoHash
 from app.db.session import get_session
-from app.schemas import JobCreateRequest, JobResponse, JobStatus
+from app.schemas import (
+    CachePurgeRequest,
+    CachePurgeResponse,
+    JobCreateRequest,
+    JobResponse,
+    JobStatus,
+)
 from app.services import audio_extract, dedup, storage, usage, video_fetch
 from app.services.fallback import schedule_groq_fallback
 from app.services.jobs import get_job_or_404
@@ -143,6 +149,42 @@ async def recent_jobs(limit: int = 10, session: AsyncSession = Depends(get_sessi
         }
         for job in result.scalars().all()
     ]
+
+
+@router.post("/cache/purge", response_model=CachePurgeResponse)
+async def purge_cache(
+    request: CachePurgeRequest,
+    session: AsyncSession = Depends(get_session),
+) -> CachePurgeResponse:
+    """Delete cached transcripts for the given Moodle video ids so they transcribe fresh —
+    used while testing transcription changes. This is a public route (the extension can't
+    send the internal token), so it's authorized by the same unlimited allowlist that
+    exposes the button in the extension; anyone else gets a 403."""
+    reward = await session.get(UserReward, request.user_id)
+    if not usage._is_unlimited(reward, request.user_id):
+        raise HTTPException(status_code=403, detail="not authorized")
+
+    ids = [vid for vid in request.moodle_video_ids if vid]
+    if not ids:
+        return CachePurgeResponse(deleted_transcripts=0, deleted_mappings=0, requested_ids=0)
+
+    mappings = (
+        await session.execute(select(VideoHash).where(VideoHash.moodle_video_id.in_(ids)))
+    ).scalars().all()
+    hashes = {m.audio_hash for m in mappings}
+
+    deleted_transcripts = 0
+    if hashes:
+        result = await session.execute(delete(Transcript).where(Transcript.audio_hash.in_(hashes)))
+        deleted_transcripts = result.rowcount or 0
+    result_map = await session.execute(delete(VideoHash).where(VideoHash.moodle_video_id.in_(ids)))
+    deleted_mappings = result_map.rowcount or 0
+    await session.commit()
+    return CachePurgeResponse(
+        deleted_transcripts=deleted_transcripts,
+        deleted_mappings=deleted_mappings,
+        requested_ids=len(ids),
+    )
 
 
 @router.get("/jobs/{job_id}", response_model=JobResponse)
