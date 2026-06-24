@@ -32,6 +32,23 @@ describe("getMoodleUserId", () => {
     expect(getMoodleUserId(document)).toBeNull();
   });
 
+  it("falls back to the notification bell data-userid (BGU menu has no id link)", () => {
+    document.body.innerHTML = `
+      <div class="usermenu">
+        <a href="https://moodle.bgu.ac.il/moodle/user/profile.php">My profile</a>
+      </div>
+      <div id="nav-notification-popover-container" data-userid="102494"></div>`;
+    expect(getMoodleUserId(document)).toBe("moodle:102494");
+  });
+
+  it("falls back to the 'logged in as' footer link", () => {
+    document.body.innerHTML = `
+      <div class="logininfo">את/ה מחובר/ת כ:
+        <a href="https://moodle.bgu.ac.il/moodle/user/profile.php?id=102494">שם</a>
+      </div>`;
+    expect(getMoodleUserId(document)).toBe("moodle:102494");
+  });
+
   it("falls back to the user-menu name when no profile link exists", () => {
     document.body.innerHTML = `
       <div data-region="user-menu"><span class="usertext">דנה כהן</span></div>`;

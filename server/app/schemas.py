@@ -22,6 +22,17 @@ class JobCreateRequest(BaseModel):
     user_id: Optional[str] = None  # Moodle user id; when set, the lecture quota applies
 
 
+class CachePurgeRequest(BaseModel):
+    user_id: str  # must be on the unlimited allowlist; otherwise 403
+    moodle_video_ids: list[str]
+
+
+class CachePurgeResponse(BaseModel):
+    deleted_transcripts: int
+    deleted_mappings: int
+    requested_ids: int
+
+
 class UsageResponse(BaseModel):
     used: int
     limit: int

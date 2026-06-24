@@ -18,7 +18,29 @@ describe("resolveResourceFile", () => {
 
     expect(result.mimeType).toBe("application/pdf");
     expect(new TextDecoder().decode(result.buffer)).toBe("%PDF-1.4 fake pdf bytes");
+    expect(result.filename).toBe("slides.pdf");
     expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("derives the source filename from an embedded pluginfile URL, %xx-decoded", async () => {
+    const bytes = new TextEncoder().encode("%PDF-1.4 embedded");
+    global.fetch.mockImplementation((url) => {
+      if (typeof url === "string" && url.includes("resource/view.php")) {
+        return Promise.resolve({
+          url,
+          headers: { get: () => "text/html" },
+          text: async () =>
+            '<html><body><a href="https://moodle.bgu.ac.il/moodle/pluginfile.php/9/mod_resource/content/0/%D7%94%D7%A8%D7%A6%D7%90%D7%942.pdf">file</a></body></html>',
+        });
+      }
+      return Promise.resolve({
+        headers: { get: () => "application/pdf" },
+        arrayBuffer: async () => bytes.buffer,
+      });
+    });
+
+    const result = await resolveResourceFile("https://moodle.bgu.ac.il/moodle/mod/resource/view.php?id=9");
+    expect(result.filename).toBe("הרצאה2.pdf");
   });
 
   it("follows an embedded iframe/object/link to the real pluginfile.php URL", async () => {

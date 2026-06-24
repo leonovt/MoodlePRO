@@ -94,6 +94,48 @@ async def test_internal_endpoint_rejects_bad_token(client):
     assert resp.status_code == 401
 
 
+async def test_cache_purge_removes_transcript_for_vip(client, internal_headers, monkeypatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "unlimited_user_ids", {"moodle:vip"})
+    # Every test's fake audio hashes the same, so pin a unique hash to avoid being served a
+    # different test's cached transcript out of the shared DB.
+    monkeypatch.setattr(audio_extract, "hash_audio", lambda _path: "purge-hash-xyz")
+
+    # Seed a cached lecture: a job with a moodle_video_id records the id->hash mapping, and
+    # completing it via the worker endpoint stores the transcript.
+    create = await client.post(
+        "/jobs", json={"video_url": "https://example.com/p.mp4", "moodle_video_id": "vid-purge"}
+    )
+    job_id = create.json()["id"]
+    await client.post(
+        f"/internal/jobs/{job_id}/complete",
+        json={"text": "to be purged", "srt": "s", "language": "he"},
+        headers=internal_headers,
+    )
+    assert (await client.get(f"/jobs/{job_id}/txt")).text == "to be purged"
+
+    # A non-allowlisted user can't purge.
+    forbidden = await client.post(
+        "/cache/purge", json={"user_id": "moodle:nobody", "moodle_video_ids": ["vid-purge"]}
+    )
+    assert forbidden.status_code == 403
+    assert (await client.get(f"/jobs/{job_id}/txt")).text == "to be purged"  # still cached
+
+    # A VIP purges it.
+    resp = await client.post(
+        "/cache/purge", json={"user_id": "moodle:vip", "moodle_video_ids": ["vid-purge"]}
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["deleted_transcripts"] == 1
+    assert body["deleted_mappings"] == 1
+    assert body["requested_ids"] == 1
+
+    # The transcript is gone, so the lecture would transcribe fresh next time.
+    assert (await client.get(f"/jobs/{job_id}/txt")).status_code == 409
+
+
 async def test_duplicate_audio_hash_is_served_from_cache(client, internal_headers, monkeypatch):
     monkeypatch.setattr(audio_extract, "hash_audio", lambda path: "shared-hash-123")
 

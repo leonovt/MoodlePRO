@@ -80,6 +80,56 @@ def select_model_key(language: str | None, has_secondary: bool) -> str:
     return "primary" if language == "he" else "secondary"
 
 
+# Language detection samples several short windows spread across the lecture rather than
+# trusting Whisper's default guess from the first ~30s — which an intro, music, silence, or
+# a few seconds of small talk in the "wrong" language can easily throw off.
+DETECT_SAMPLE_RATE = 16000
+DETECT_WINDOW_SECONDS = 30.0
+DETECT_WINDOW_FRACTIONS = (0.1, 0.3, 0.5, 0.7, 0.9)
+
+
+def plan_detection_windows(
+    total_samples: int,
+    window_samples: int,
+    fractions: tuple[float, ...] = DETECT_WINDOW_FRACTIONS,
+) -> list[tuple[int, int]]:
+    """Choose [start, end) sample ranges to language-detect, spread across the audio.
+
+    Returns an empty list when the audio is shorter than one window (the caller should then
+    detect on the whole clip). Windows are clamped to stay in bounds, and identical starts
+    (which happen on short audio where several fractions collapse to the same offset) are
+    de-duplicated so we don't detect the same slice twice."""
+    if window_samples <= 0 or total_samples <= window_samples:
+        return []
+    starts: list[int] = []
+    seen: set[int] = set()
+    for frac in fractions:
+        start = max(0, min(int(frac * total_samples), total_samples - window_samples))
+        if start in seen:
+            continue
+        seen.add(start)
+        starts.append(start)
+    return [(start, start + window_samples) for start in starts]
+
+
+def vote_language(detections) -> str | None:
+    """Majority vote over per-window detections, weighted by each window's confidence.
+
+    `detections` is an iterable of (language, probability). Returns the highest-scoring
+    language, or None if nothing usable was detected. Probability weighting lets a couple of
+    confident windows outweigh several low-confidence ones (e.g. near-silent slices), which
+    implements "majority language wins" without a near-silent window swinging the result."""
+    scores: dict[str, float] = {}
+    for language, probability in detections:
+        if not language:
+            continue
+        scores[language] = scores.get(language, 0.0) + (probability or 0.0)
+    if not scores:
+        return None
+    # Deterministic tie-break: highest score, then language name.
+    return max(scores, key=lambda lang: (scores[lang], lang))
+
+
 class _LoadedModel:
     """One faster-whisper model plus its optional batched pipeline."""
 
@@ -105,12 +155,33 @@ class _LoadedModel:
         for seg in segments:
             yield Segment(text=seg.text.strip(), start=seg.start, end=seg.end)
 
+    def _detect_one(self, audio) -> tuple[str | None, float]:
+        """Detect language on one audio input (path or samples), returning (lang, prob).
+        faster-whisper detects eagerly inside transcribe() — before the returned segment
+        generator is iterated — so reading info without consuming it runs detection but NOT
+        a full decode."""
+        _segments, info = self.model.transcribe(audio, vad_filter=True)
+        return getattr(info, "language", None), getattr(info, "language_probability", 0.0) or 0.0
+
     def detect_language(self, audio_path: Path) -> str | None:
-        """Detect the spoken language cheaply. faster-whisper detects eagerly inside
-        transcribe() (before the returned segment generator is iterated), so reading
-        info.language without consuming the generator runs detection but NOT a full decode."""
-        _segments, info = self.model.transcribe(str(audio_path), vad_filter=True)
-        return getattr(info, "language", None)
+        """Detect the spoken language by a confidence-weighted majority vote over several
+        windows spread across the lecture, so an intro/silence/brief code-switch in the
+        first 30s doesn't decide the whole transcript's language. Falls back to a single
+        whole-clip detection if the audio can't be decoded or is shorter than one window."""
+        try:
+            from faster_whisper.audio import decode_audio  # local: GPU-only dependency
+
+            audio = decode_audio(str(audio_path), sampling_rate=DETECT_SAMPLE_RATE)
+        except Exception:  # noqa: BLE001 - decode/deps issue: fall back to whole-file detection
+            return self._detect_one(str(audio_path))[0]
+
+        window_samples = int(DETECT_WINDOW_SECONDS * DETECT_SAMPLE_RATE)
+        windows = plan_detection_windows(len(audio), window_samples)
+        if not windows:
+            return self._detect_one(audio)[0]
+
+        detections = [self._detect_one(audio[start:end]) for start, end in windows]
+        return vote_language(detections) or self._detect_one(audio)[0]
 
 
 class WhisperTranscriber(Transcriber):
