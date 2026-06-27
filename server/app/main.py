@@ -9,6 +9,7 @@ from redis.asyncio import Redis
 from app.api import content, internal, jobs, users, ws
 from app.core.config import settings
 from app.db.session import init_db
+from app.services import storage
 
 # Route our own loggers (app.services.fallback "via Groq fallback", etc.) to stdout.
 # Uvicorn only wires up its own access logs, so without this our logger.info calls are
@@ -21,10 +22,12 @@ async def lifespan(app: FastAPI):
     await init_db()
     redis = Redis.from_url(settings.redis_url)
     relay_task = asyncio.create_task(ws.relay_segments_forever(redis))
+    janitor_task = asyncio.create_task(storage.sweep_job_dirs_forever())
     try:
         yield
     finally:
         relay_task.cancel()
+        janitor_task.cancel()
         await redis.aclose()
 
 

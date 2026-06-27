@@ -114,4 +114,5 @@ async def fail_job(
     job.status = "failed"
     job.error = error
     await session.commit()
+    storage.cleanup_job(job_id)  # worker already extracted the audio → drop it so failures don't leak disk
     return {"status": "failed"}

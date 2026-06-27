@@ -9,6 +9,13 @@ class Settings(BaseSettings):
     internal_api_token: str = "dev-internal-token-change-me"
     storage_dir: str = "./data"
     public_base_url: str = "http://localhost:8000"
+
+    # Janitor: a periodic safety-net sweep of STORAGE_DIR for orphaned job dirs left by jobs
+    # that died without ever hitting a cleanup path (e.g. a cluster worker crash / SLURM
+    # eviction with no /complete or /fail callback). A job in flight keeps rewriting its dir
+    # (download, extract, opus transcode), so a dir untouched for this many hours is dead.
+    job_dir_max_age_hours: float = 6.0
+    job_dir_sweep_interval_seconds: float = 1800.0
     gemini_api_key: str = ""
 
     # Per-user lecture quota (identified by Moodle user). Writing a review (honor system)

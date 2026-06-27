@@ -155,6 +155,7 @@ async def _mark_job_failed(job_id: str, error: str) -> None:
                 job.status = "failed"
                 job.error = error
                 await session.commit()
+                storage.cleanup_job(job_id)  # terminal failure → drop the video/WAV so it doesn't leak disk
     except Exception:  # noqa: BLE001 - best-effort; the exception is already logged
         logger.exception("failed to mark job %s as failed", job_id)
 
