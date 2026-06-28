@@ -34,7 +34,14 @@ class Settings(BaseSettings):
     # with every request) that never get quota-gated, with no prompt/self-report needed
     # at all. prives = 102494, other developer = 102628. (439866 was an early wrong guess
     # for leonovt's id, kept harmlessly; an id that matches nobody just never triggers.)
-    unlimited_user_ids: set[str] = {"moodle:439866", "moodle:102494", "moodle:102628"}
+    unlimited_user_ids: set[str] = {
+        "moodle:439866",
+        "moodle:102494",
+        "moodle:102628",
+        "moodle:103813",
+        "moodle:103238",
+        "moodle:95603",
+    }
 
     # Master switch for the cluster GPU worker path. When False, the server never
     # enqueues to the cluster and never waits for a worker heartbeat — every job goes
