@@ -6,7 +6,7 @@ const AUD = 'tool-launch'
 const JWKS_URL = 'https://ddeubhasvmeqwtzgkunt.supabase.co/functions/v1/jwks'
 const COOKIE_NAME = 'hub02_session'
 const COOKIE_MAX_AGE_FALLBACK = 300
-const IDENTITY_MODE_DEFAULT = 'off'
+const IDENTITY_MODE_DEFAULT = 'active'
 
 const jwks = createRemoteJWKSet(new URL(JWKS_URL))
 
