@@ -6,6 +6,7 @@ const AUD = 'tool-launch'
 const JWKS_URL = 'https://ddeubhasvmeqwtzgkunt.supabase.co/functions/v1/jwks'
 const COOKIE_NAME = 'hub02_session'
 const COOKIE_MAX_AGE_FALLBACK = 300
+const IDENTITY_MODE_DEFAULT = 'off'
 
 const jwks = createRemoteJWKSet(new URL(JWKS_URL))
 
@@ -39,6 +40,68 @@ export const onRequest: PagesFunction = async (ctx) => {
 
   if (path.startsWith('/.well-known/')) {
     return next()
+  }
+
+  // --- Identity surface (Tool-Identity SSO). Gated on env.HUB02_IDENTITY_MODE. ---
+  // Default 'off' = today's behavior (no identity endpoints, no redirect).
+  const IDENTITY_MODE = String((env.HUB02_IDENTITY_MODE as string) || IDENTITY_MODE_DEFAULT || 'off').toLowerCase()
+  const H02_SUPA = (env.HUB02_SUPABASE_URL as string) || (env.SUPABASE_URL as string) || 'https://ddeubhasvmeqwtzgkunt.supabase.co'
+  const H02_BUILDER = (env.HUB02_BUILDER_API_KEY as string) || ''
+  const h02LoginUrl = () => {
+    const toolId = (env.HUB02_TOOL_ID as string) || ''
+    let u = 'https://hub02.com/login?return_url=' + encodeURIComponent(url.toString())
+    if (toolId) u += '&tool_id=' + encodeURIComponent(toolId)
+    return u
+  }
+  const h02IdHeaders = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Vary': 'Cookie' }
+
+  if ((path === '/__hub02/me' || path === '/__hub02/token') && IDENTITY_MODE !== 'off') {
+    // Same-origin only.
+    const origin = request.headers.get('origin')
+    if (origin && origin !== url.origin) {
+      return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403, headers: h02IdHeaders })
+    }
+    const idCookies = parseCookies(request)
+    const cookieTok = idCookies[COOKIE_NAME] || ''
+
+    // Unauthenticated response: redirect a top-level browser navigation to
+    // login (no raw-JSON black screen); programmatic fetch() calls get JSON.
+    const acceptHdr = (request.headers.get('accept') || '').toLowerCase()
+    const isDocNav = request.method === 'GET' && acceptHdr.indexOf('text/html') !== -1
+    const unauth = () => isDocNav
+      ? new Response(null, { status: 302, headers: { Location: h02LoginUrl() } })
+      : new Response(JSON.stringify({ authenticated: false, login_url: h02LoginUrl() }), { status: 401, headers: h02IdHeaders })
+
+    if (path === '/__hub02/me') {
+      // Identity comes from the verified launch JWT already in the cookie.
+      let payload: any = null
+      if (cookieTok) { try { payload = (await jwtVerify(cookieTok, jwks, { issuer: ISS, audience: AUD })).payload } catch (e) { payload = null } }
+      if (payload) {
+        return new Response(JSON.stringify({
+          authenticated: true,
+          user_id: payload.sub || null,
+          hub_id: payload.hub_id || null,
+          tool_id: payload.tool_id || (env.HUB02_TOOL_ID as string) || null,
+          email: null, name: null,
+          exp: payload.exp || null,
+        }), { status: 200, headers: h02IdHeaders })
+      }
+      return unauth()
+    }
+
+    // /__hub02/token — re-mint the launch JWT as a short-lived identity token
+    // (aud="tool-identity") via the Hub02 issue-tool-identity function.
+    if (cookieTok) {
+      try {
+        const idHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (H02_BUILDER) idHeaders['Authorization'] = 'Bearer ' + H02_BUILDER
+        const r = await fetch(H02_SUPA + '/functions/v1/issue-tool-identity', {
+          method: 'POST', headers: idHeaders, body: JSON.stringify({ launch_token: cookieTok }),
+        })
+        if (r.ok) { const d = await r.json(); if (d && d.token) return new Response(JSON.stringify({ token: d.token, exp: d.exp }), { status: 200, headers: h02IdHeaders }) }
+      } catch (e) {}
+    }
+    return unauth()
   }
 
   // --- JTI-based launch support ---
@@ -119,6 +182,14 @@ export const onRequest: PagesFunction = async (ctx) => {
 
   if (!token) {
     console.log('[Gate] no_token path=' + path + ' total_ms=' + (Date.now() - t0))
+    // 'active' mode: redirect a top-level navigation to Hub02 login (no black
+    // screen); API/non-GET requests still get a structured 401.
+    if (IDENTITY_MODE === 'active') {
+      const accept = (request.headers.get('accept') || '').toLowerCase()
+      if (request.method === 'GET' && accept.indexOf('text/html') !== -1) {
+        return new Response(null, { status: 302, headers: { Location: h02LoginUrl() } })
+      }
+    }
     return new Response('Access required', { status: 401 })
   }
 
