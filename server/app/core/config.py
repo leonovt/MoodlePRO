@@ -42,6 +42,7 @@ class Settings(BaseSettings):
         "moodle:103238",
         "moodle:95603",
         "moodle:64340",
+        "moodle:103803",
     }
 
     # Master switch for the cluster GPU worker path. When False, the server never
