@@ -152,25 +152,3 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
 
-      # ---------- Notify Hub02 to finalize domain + DNS ----------
-      - name: Notify Hub02 finalize
-        if: ${{ success() }}
-        run: |
-          curl -X POST "$HUB02_PUBLISH_FINALIZE_URL" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.HUB02_SERVICE_ROLE_KEY }}" \
-            -d "{\"job_id\":\"${HUB02_PUBLISH_JOB_ID}\",\"finalize\":true,\"secret\":\"${HUB02_PWF_SECRET}\"}"
-        env:
-          HUB02_PWF_SECRET: "e1e8dd5b8dd640f2537b4dbf4b8aa4dbe6f14cf5f4f8c9fdd75ddc7e90f46b52"
-
-      # ---------- Notify Hub02 of build/deploy failure ----------
-      - name: Notify Hub02 failure
-        if: ${{ failure() }}
-        run: |
-          REASON="build"
-          if [ "${{ steps.deploy.outcome }}" = "failure" ]; then REASON="deploy"; fi
-          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          curl -X POST "$HUB02_PUBLISH_FINALIZE_URL" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.HUB02_SERVICE_ROLE_KEY }}" \
-            -d "{\"job_id\":\"${HUB02_PUBLISH_JOB_ID}\",\"failed\":true,\"failure_reason\":\"${REASON}\",\"run_url\":\"${RUN_URL}\"}"
